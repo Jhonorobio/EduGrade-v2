@@ -1,20 +1,7 @@
-import React, { useState, useEffect, useCallback, Suspense, lazy, memo } from 'react';
+import React, { useState, useEffect, useCallback, Suspense, lazy } from 'react';
 import { 
-  LayoutGrid,
-  Users2, 
-  BookText, 
-  LogOut, 
-  GraduationCap,
-  Settings,
   Loader2,
   AlertCircle,
-  ClipboardCheck,
-  BarChart3,
-  BookUser,
-  ArrowLeft,
-  Bell,
-  HelpCircle,
-  Search,
   ArrowUp,
   ArrowDown
 } from 'lucide-react';
@@ -23,6 +10,7 @@ import { db } from './services/db';
 import { isSupabaseConfigured } from './services/supabase';
 import { useToast } from './components/Toast';
 import RootLayout from './app/layout';
+import { AppLayout } from './components/AppLayout';
 
 // Shadcn UI components
 import { Button } from './components/ui/button';
@@ -56,14 +44,6 @@ type ViewMode =
   | 'STUDENT_MANAGEMENT'
   | 'GROUP_DIRECTOR_VIEW'
   | 'ACADEMIC_SETTINGS';
-
-// FIX: Added NavItemConfig interface to ensure 'disabled' property is optionally available on all nav items, resolving a TypeScript error.
-interface NavItemConfig {
-  icon: React.ElementType;
-  text: string;
-  view: ViewMode;
-  disabled?: boolean;
-}
 
 interface ErrorBoundaryProps {
   children?: React.ReactNode;
@@ -101,25 +81,7 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
   }
 }
 
-const NavItem = memo<{
-  icon: React.ElementType, 
-  text: string, 
-  onClick: () => void, 
-  active?: boolean, 
-  disabled?: boolean
-}>(({ icon: Icon, text, onClick, active, disabled }) => (
-    <button 
-      onClick={onClick}
-      disabled={disabled}
-      className={`w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-        active ? 'bg-sidebar-primary text-sidebar-primary-foreground' : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
-      } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
-    >
-      <Icon size={20} className="flex-shrink-0" />
-      <span className="whitespace-nowrap truncate">{text}</span>
-    </button>
-));
-NavItem.displayName = 'NavItem';
+
 
 const AppLoader: React.FC = () => (
     <div className="w-full h-full flex items-center justify-center p-8">
@@ -464,100 +426,22 @@ function App() {
     );
   }
 
-  const handleBackToDashboard = () => {
-      setViewMode('DASHBOARD');
-      setSelectedAssignment(null);
-      setSelectedSubject(null);
-  };
-
-  const navItemsByRole: Record<UserRole, NavItemConfig[]> = {
-    [UserRole.DOCENTE]: [
-      { icon: LayoutGrid, text: 'Panel', view: 'DASHBOARD' },
-      { icon: BookUser, text: 'Dir. de Grupo', view: 'GROUP_DIRECTOR_VIEW', disabled: !directedGrade },
-    ],
-    [UserRole.ADMIN_COLEGIO]: [
-      { icon: LayoutGrid, text: 'Panel', view: 'DASHBOARD' },
-      { icon: Users2, text: 'Usuarios', view: 'USER_MANAGEMENT' },
-      { icon: ClipboardCheck, text: 'Asignaciones', view: 'ASSIGNMENT_MANAGEMENT' },
-      { icon: BookText, text: 'Materias', view: 'SUBJECT_MANAGEMENT' },
-      { icon: GraduationCap, text: 'Grados', view: 'GRADE_LEVEL_MANAGEMENT' },
-      { icon: BarChart3, text: 'Alumnos', view: 'STUDENT_MANAGEMENT' },
-      { icon: Settings, text: 'Ajustes', view: 'ACADEMIC_SETTINGS' },
-    ],
-    [UserRole.SUPER_ADMIN]: [
-      { icon: LayoutGrid, text: 'Panel', view: 'DASHBOARD' },
-      { icon: Users2, text: 'Usuarios', view: 'USER_MANAGEMENT' },
-      { icon: ClipboardCheck, text: 'Asignaciones', view: 'ASSIGNMENT_MANAGEMENT' },
-      { icon: BookText, text: 'Materias', view: 'SUBJECT_MANAGEMENT' },
-      { icon: GraduationCap, text: 'Grados', view: 'GRADE_LEVEL_MANAGEMENT' },
-      { icon: BarChart3, text: 'Alumnos', view: 'STUDENT_MANAGEMENT' },
-      { icon: Settings, text: 'Ajustes', view: 'ACADEMIC_SETTINGS' },
-    ]
-  };
-  
-  const currentNavItems = currentUser ? navItemsByRole[currentUser.role] : [];
   const currentTitle = VIEW_TITLES[viewMode] || 'EduGrade';
-  const showBackButton = viewMode !== 'DASHBOARD';
 
   return (
     <RootLayout>
-      <div className="flex h-screen bg-neutral-100">
-        {/* Sidebar */}
-        <aside className="w-64 bg-sidebar border-r flex flex-col shrink-0">
-          <div className="h-16 border-b flex items-center px-4">
-            <h1 className="text-xl font-bold text-neutral-800">EduGrade</h1>
-          </div>
-          <nav className="flex-1 p-4 space-y-2">
-            {currentNavItems.map(item => (
-              <NavItem 
-                key={item.view}
-                icon={item.icon}
-                text={item.text}
-                onClick={() => setViewMode(item.view)}
-                active={viewMode === item.view}
-                disabled={item.disabled}
-              />
-            ))}
-          </nav>
-          <div className="p-4 border-t">
-            <NavItem icon={LogOut} text="Cerrar Sesión" onClick={handleLogout} />
-          </div>
-        </aside>
-
-        {/* Main Content */}
-        <main className="flex-1 flex flex-col overflow-hidden">
-          {/* Header */}
-           <header className="h-16 bg-white border-b flex items-center justify-between px-6 shrink-0">
-            <div className="flex items-center gap-3">
-               {showBackButton && (
-                <button onClick={handleBackToDashboard} className="p-2 -ml-2 rounded-full hover:bg-neutral-100">
-                  <ArrowLeft size={20} className="text-neutral-600" />
-                </button>
-              )}
-              <h2 className="text-xl font-semibold text-neutral-800">{currentTitle}</h2>
-            </div>
-
-            <div className="flex items-center gap-4">
-               <div className="relative">
-                  <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
-                  <Input placeholder="Buscar..." className="pl-9 w-64" />
-              </div>
-              <button className="p-2 rounded-full hover:bg-neutral-100"><HelpCircle size={20} className="text-neutral-600" /></button>
-              <button className="p-2 rounded-full hover:bg-neutral-100"><Bell size={20} className="text-neutral-600" /></button>
-              <div className="w-9 h-9 rounded-full bg-neutral-200 flex items-center justify-center font-bold text-neutral-600">
-                {currentUser?.name?.[0].toUpperCase()}
-              </div>
-            </div>
-          </header>
-
-          {/* Content Area */}
-          <div className="flex-1 overflow-y-auto p-6">
-             <ErrorBoundary>
-               {renderView()}
-             </ErrorBoundary>
-          </div>
-        </main>
-      </div>
+      <AppLayout
+        currentUser={currentUser}
+        viewMode={viewMode}
+        setViewMode={setViewMode}
+        onLogout={handleLogout}
+        directedGrade={directedGrade}
+        currentTitle={currentTitle}
+      >
+        <ErrorBoundary>
+          {renderView()}
+        </ErrorBoundary>
+      </AppLayout>
     </RootLayout>
   );
 }
