@@ -2,11 +2,12 @@ import { GoogleGenAI } from "@google/genai";
 import { PeriodGradeData, Student, DirectorReportSubmission, Subject } from "../types";
 
 const getAiClient = () => {
-  if (!process.env.API_KEY) {
-    console.warn("API_KEY is missing in environment variables.");
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+  if (!apiKey) {
+    console.warn("VITE_GEMINI_API_KEY is missing in environment variables.");
     return null;
   }
-  return new GoogleGenAI({ apiKey: process.env.API_KEY });
+  return new GoogleGenAI({ apiKey });
 };
 
 export const generateStudentObservation = async (
@@ -23,8 +24,8 @@ export const generateStudentObservation = async (
     
     Estudiante: ${student.name}
     Nota Definitiva del Periodo: ${finalGrade.toFixed(1)} / 10.0
-    Desempeño en Tareas (Promedio): ${(grades.tasks.reduce((a, b) => a + (b || 0), 0) / Math.max(grades.tasks.length, 1)).toFixed(1)}
-    Desempeño en Talleres (Promedio): ${(grades.workshops.reduce((a, b) => a + (b || 0), 0) / Math.max(grades.workshops.length, 1)).toFixed(1)}
+    Desempeño en Tareas (Promedio): ${(grades.tasks.reduce((a: number, b: number | null) => a + (b || 0), 0) / Math.max(grades.tasks.length, 1)).toFixed(1)}
+    Desempeño en Talleres (Promedio): ${(grades.workshops.reduce((a: number, b: number | null) => a + (b || 0), 0) / Math.max(grades.workshops.length, 1)).toFixed(1)}
     Nota Examen: ${grades.exam}
     Actitud: ${grades.attitude}
     

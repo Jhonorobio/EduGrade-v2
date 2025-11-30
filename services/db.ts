@@ -202,7 +202,7 @@ async function _getAssignments(teacherId?: string): Promise<Assignment[]> {
             const gradeLevelsData = gradeLevelIds.map((id: string) => gradeLevelsMap.get(id)).filter(Boolean);
             const studentsData = gradeLevelIds
                 .flatMap((gradeId: string) => studentsByGradeMap.get(gradeId) || [])
-                .filter((student, index, self) => self.findIndex(s => s.id === student.id) === index); // Ensure unique students
+                .filter((student, index, self) => self.findIndex((s: any) => s.id === student.id) === index); // Ensure unique students
             
             const subjectData = course.subject_id ? subjectsMap.get(course.subject_id) : undefined;
             const teacherData = course.teacher_id ? teachersMap.get(course.teacher_id) : undefined;
@@ -838,7 +838,13 @@ async function getGradeLevels(): Promise<GradeLevel[]> {
             name: item.name,
             isEnabled: item.is_enabled,
             directorId: item.director_id,
-            director: item.director ? { ...item.director, role: UserRole.DOCENTE, username: '', email: '' } : null,
+            director: item.director ? { 
+                id: item.director.id,
+                name: item.director.name || '',
+                role: UserRole.DOCENTE, 
+                username: item.director.username || '', 
+                email: item.director.email || '' 
+            } : null,
         }));
     }
     
@@ -1117,8 +1123,8 @@ async function getStudentConsolidatedReportData(studentId: string, gradeLevelId:
                 const taskActivitiesForPeriod = taskActivities[p] || [];
                 const workshopActivitiesForPeriod = workshopActivities[p] || [];
 
-                const taskAvg = tasks.reduce((a, b) => a + (b || 0), 0) / Math.max(taskActivitiesForPeriod.length, 1);
-                const workshopAvg = workshops.reduce((a, b) => a + (b || 0), 0) / Math.max(workshopActivitiesForPeriod.length, 1);
+                const taskAvg = tasks.reduce((a: number, b: number) => a + (b || 0), 0) / Math.max(taskActivitiesForPeriod.length, 1);
+                const workshopAvg = workshops.reduce((a: number, b: number) => a + (b || 0), 0) / Math.max(workshopActivitiesForPeriod.length, 1);
                 const pTasks = taskAvg * 0.20;
                 const pWorkshops = workshopAvg * 0.20;
                 const pAttitude = (gradeRecord.attitude || 0) * 0.20;
