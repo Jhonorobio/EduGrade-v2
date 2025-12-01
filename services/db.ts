@@ -1348,3 +1348,95 @@ export const db = {
     getAcademicSettings,
     saveAcademicSettings,
 };
+
+// Upda
+te user avatar
+async function updateUserAvatar(userId: string, avatarId: string): Promise<void> {
+    if (!isSupabaseConfigured() || !supabase) {
+        console.log("Demo mode: Updating avatar for user", userId, "to", avatarId);
+        const user = MOCK_USERS.find(u => u.id === userId);
+        if (user) {
+            user.avatar = avatarId;
+        }
+        return;
+    }
+
+    const { error } = await supabase
+        .from('users')
+        .update({ avatar: avatarId })
+        .eq('id', userId);
+
+    if (error) throw error;
+}
+
+// Change user password
+async function changePassword(userId: string, currentPassword: string, newPassword: string): Promise<void> {
+    if (!isSupabaseConfigured() || !supabase) {
+        console.log("Demo mode: Changing password for user", userId);
+        const user = MOCK_USERS.find(u => u.id === userId);
+        if (user && user.password === currentPassword) {
+            user.password = newPassword;
+        } else {
+            throw new Error("Contraseña actual incorrecta");
+        }
+        return;
+    }
+
+    // First verify current password
+    const { data: user, error: fetchError } = await supabase
+        .from('users')
+        .select('password')
+        .eq('id', userId)
+        .single();
+
+    if (fetchError) throw fetchError;
+    if (user.password !== currentPassword) {
+        throw new Error("Contraseña actual incorrecta");
+    }
+
+    // Update to new password
+    const { error } = await supabase
+        .from('users')
+        .update({ password: newPassword })
+        .eq('id', userId);
+
+    if (error) throw error;
+}
+
+export const db = {
+    login,
+    logout,
+    getUsers,
+    createUser,
+    updateUser,
+    deleteUser,
+    getSubjects,
+    createSubject,
+    updateSubject,
+    deleteSubject,
+    getGradeLevels,
+    createGradeLevel,
+    updateGradeLevel,
+    deleteGradeLevel,
+    getStudents,
+    createStudent,
+    updateStudent,
+    deleteStudent,
+    getAssignments,
+    createAssignment,
+    updateAssignment,
+    deleteAssignment,
+    getTeacherAssignments,
+    getAssignmentGrades,
+    saveGrades,
+    saveAssignmentActivities,
+    getStats,
+    getDirectedGradeLevel,
+    getAcademicSettings,
+    saveAcademicSettings,
+    submitReportsToDirector,
+    getConsolidatedReports,
+    saveDirectorObservation,
+    updateUserAvatar,
+    changePassword,
+};
