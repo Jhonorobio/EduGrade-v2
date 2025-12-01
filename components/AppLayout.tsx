@@ -90,30 +90,29 @@ export function AppLayout({
       {/* Sidebar */}
       <aside
         className={cn(
-          'flex h-full flex-col border-r border-sidebar-border bg-sidebar transition-all duration-300',
+          'flex h-full flex-col border-r border-gray-200 bg-gray-50 transition-all duration-300',
           sidebarOpen ? 'w-64' : 'w-16'
         )}
       >
         {/* Header */}
-        <div className="flex h-16 items-center justify-center border-b px-4">
-          {sidebarOpen ? (
-            <div className="flex items-center gap-2">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-                <GraduationCap className="h-6 w-6" />
+        <div className="flex h-16 items-center px-4">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+              <GraduationCap className="h-5 w-5" />
+            </div>
+            {sidebarOpen && (
+              <div className="flex flex-col">
+                <span className="text-sm font-semibold text-gray-900">EduGrade</span>
+                <span className="text-xs text-gray-500">Plataforma educativa</span>
               </div>
-              <span className="text-lg font-semibold text-sidebar-foreground">EduGrade</span>
-            </div>
-          ) : (
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-              <GraduationCap className="h-6 w-6" />
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
         {/* Navigation */}
         <nav className="flex-1 space-y-1 overflow-y-auto p-4">
           {sidebarOpen && (
-            <p className="mb-2 px-3 text-xs font-semibold text-sidebar-foreground/70">
+            <p className="mb-2 px-3 text-xs font-semibold text-gray-500">
               Navegación
             </p>
           )}
@@ -129,8 +128,8 @@ export function AppLayout({
                 className={cn(
                   'flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
                   isActive
-                    ? 'bg-sidebar-primary text-sidebar-primary-foreground'
-                    : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
+                    ? 'bg-blue-600 text-white'
+                    : 'text-gray-700 hover:bg-gray-200',
                   isDisabled && 'cursor-not-allowed opacity-50',
                   !sidebarOpen && 'justify-center'
                 )}
@@ -143,11 +142,11 @@ export function AppLayout({
         </nav>
 
         {/* Footer */}
-        <div className="border-t p-4">
+        <div className="p-4">
           <button
             onClick={onLogout}
             className={cn(
-              'flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
+              'flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-200',
               !sidebarOpen && 'justify-center'
             )}
             title={!sidebarOpen ? 'Cerrar Sesión' : undefined}
@@ -157,12 +156,12 @@ export function AppLayout({
           </button>
           {sidebarOpen && (
             <div className="mt-4 flex items-center gap-3 px-2">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-sidebar-accent font-semibold text-sidebar-accent-foreground">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gray-300 font-semibold text-gray-700">
                 {currentUser.name?.[0].toUpperCase()}
               </div>
               <div className="flex min-w-0 flex-col text-sm">
-                <span className="truncate font-medium text-sidebar-foreground">{currentUser.name}</span>
-                <span className="truncate text-xs text-sidebar-foreground/70">{currentUser.role}</span>
+                <span className="truncate font-medium text-gray-900">{currentUser.name}</span>
+                <span className="truncate text-xs text-gray-500">{currentUser.role}</span>
               </div>
             </div>
           )}
@@ -172,7 +171,7 @@ export function AppLayout({
       {/* Main Content */}
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Header */}
-        <header className="flex h-16 shrink-0 items-center justify-between border-b bg-background px-6">
+        <header className="flex h-16 shrink-0 items-center justify-between bg-white px-6">
           <div className="flex items-center gap-3">
             <Button
               variant="ghost"
@@ -213,7 +212,7 @@ export function AppLayout({
         </header>
 
         {/* Content */}
-        <main className="flex-1 overflow-y-auto bg-background p-6">{children}</main>
+        <main className="flex-1 overflow-y-auto bg-white p-6">{children}</main>
       </div>
     </div>
   );
