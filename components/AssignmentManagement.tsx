@@ -1,20 +1,51 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { db } from '../services/db';
 import { User, UserRole, Assignment, Subject, GradeLevel } from '../types';
-import { Plus, Edit, Trash2, X, Loader2, PlusCircle, ArrowUp, ArrowDown, ChevronsUpDown } from 'lucide-react';
+import { Edit, Trash2, Loader2, PlusCircle, ArrowUp, ArrowDown, ChevronsUpDown } from 'lucide-react';
 import { ConfirmationModal } from './ConfirmationModal';
 import { useToast } from './Toast';
-
+import { Button } from './ui/button';
+import { Label } from './ui/label';
+import { Checkbox } from './ui/checkbox';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from './ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from './ui/dialog';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from './ui/table';
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from './ui/tabs';
 interface AssignmentManagementProps {}
 
 const AssignmentFormModal: React.FC<{
   assignment: Assignment | null;
+  open: boolean;
   subjects: Subject[];
   gradeLevels: GradeLevel[];
   teachers: User[];
   onSave: (assignment: Partial<Assignment>) => void;
   onCancel: () => void;
-}> = ({ assignment, subjects, gradeLevels, teachers, onSave, onCancel }) => {
+}> = ({ assignment, open, subjects, gradeLevels, teachers, onSave, onCancel }) => {
   const [formData, setFormData] = useState({
     subjectId: assignment?.subjectId || '',
     gradeLevelIds: assignment?.gradeLevelIds || [] as string[],
@@ -22,15 +53,19 @@ const AssignmentFormModal: React.FC<{
   });
   const { addToast } = useToast();
 
-  const handleSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
+  useEffect(() => {
+    setFormData({
+      subjectId: assignment?.subjectId || '',
+      gradeLevelIds: assignment?.gradeLevelIds || [] as string[],
+      teacherId: assignment?.teacherId || '',
+    });
+  }, [assignment]);
 
-  const handleGradeLevelChange = (gradeId: string) => {
+  const handleGradeLevelChange = (gradeId: string, checked: boolean) => {
     setFormData(prev => {
-        const newIds = prev.gradeLevelIds.includes(gradeId)
-            ? prev.gradeLevelIds.filter(id => id !== gradeId)
-            : [...prev.gradeLevelIds, gradeId];
+        const newIds = checked
+            ? [...prev.gradeLevelIds, gradeId]
+            : prev.gradeLevelIds.filter(id => id !== gradeId);
         return { ...prev, gradeLevelIds: newIds };
     });
   };
@@ -45,53 +80,72 @@ const AssignmentFormModal: React.FC<{
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
-        <div className="p-4 border-b flex justify-between items-center">
-          <h3 className="text-lg font-bold">{assignment ? 'Editar Asignación' : 'Nueva Asignación'}</h3>
-          <button onClick={onCancel} className="p-1 hover:bg-slate-200 rounded-full"><X size={20} /></button>
-        </div>
+    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onCancel()}>
+      <DialogContent className="sm:max-w-[500px]">
+        <DialogHeader>
+          <DialogTitle>{assignment ? 'Editar Asignación' : 'Nueva Asignación'}</DialogTitle>
+        </DialogHeader>
         <form onSubmit={handleSubmit}>
-          <div className="p-6 space-y-4">
-            <div>
-              <label className="text-sm font-medium text-slate-600">Materia</label>
-              <select name="subjectId" value={formData.subjectId} onChange={handleSelectChange} className="mt-1 w-full p-2 border rounded bg-white" required>
-                <option value="" disabled>Seleccione una materia...</option>
-                {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-              </select>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="subject">Materia</Label>
+              <Select
+                value={formData.subjectId}
+                onValueChange={(value) => setFormData({ ...formData, subjectId: value })}
+              >
+                <SelectTrigger id="subject" className="w-full">
+                  <SelectValue placeholder="Seleccione una materia..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {subjects.map(s => (
+                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-             <div>
-              <label className="text-sm font-medium text-slate-600">Grados Asignados</label>
-              <div className="mt-2 space-y-2 max-h-40 overflow-y-auto border p-3 rounded-md bg-slate-50">
+            <div className="space-y-2">
+              <Label>Grados Asignados</Label>
+              <div className="space-y-2 max-h-40 overflow-y-auto border p-3 rounded-md bg-slate-50">
                 {gradeLevels.map(g => (
-                  <div key={g.id} className="flex items-center">
-                    <input
-                      type="checkbox"
+                  <div key={g.id} className="flex items-center space-x-2">
+                    <Checkbox
                       id={`grade-${g.id}`}
                       checked={formData.gradeLevelIds.includes(g.id)}
-                      onChange={() => handleGradeLevelChange(g.id)}
-                      className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                      onCheckedChange={(checked) => handleGradeLevelChange(g.id, checked as boolean)}
                     />
-                    <label htmlFor={`grade-${g.id}`} className="ml-3 text-sm text-gray-700">{g.name}</label>
+                    <Label htmlFor={`grade-${g.id}`} className="text-sm font-normal cursor-pointer">
+                      {g.name}
+                    </Label>
                   </div>
                 ))}
               </div>
             </div>
-            <div>
-              <label className="text-sm font-medium text-slate-600">Profesor Asignado</label>
-              <select name="teacherId" value={formData.teacherId} onChange={handleSelectChange} className="mt-1 w-full p-2 border rounded bg-white" required>
-                 <option value="" disabled>Seleccione un profesor...</option>
-                {teachers.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-              </select>
+            <div className="space-y-2">
+              <Label htmlFor="teacher">Profesor Asignado</Label>
+              <Select
+                value={formData.teacherId}
+                onValueChange={(value) => setFormData({ ...formData, teacherId: value })}
+              >
+                <SelectTrigger id="teacher" className="w-full">
+                  <SelectValue placeholder="Seleccione un profesor..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {teachers.map(t => (
+                    <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
-          <div className="p-4 bg-slate-50 flex justify-end gap-2">
-            <button type="button" onClick={onCancel} className="px-4 py-2 bg-slate-200 rounded">Cancelar</button>
-            <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded">Guardar</button>
-          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={onCancel}>
+              Cancelar
+            </Button>
+            <Button type="submit">Guardar</Button>
+          </DialogFooter>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 };
 
@@ -202,18 +256,78 @@ export const AssignmentManagement: React.FC<AssignmentManagementProps> = () => {
     }
   };
 
+  const renderAssignmentsTable = () => (
+    <div>
+      <Table>
+        <TableHeader className="bg-slate-100">
+          <TableRow>
+            <TableHead>
+              <Button 
+                variant="ghost" 
+                onClick={() => requestSort('subject')} 
+                className="flex items-center gap-1 h-auto p-0 hover:bg-transparent font-bold"
+              >
+                Asignación (Materia y Grados) {getSortIcon('subject')}
+              </Button>
+            </TableHead>
+            <TableHead className="hidden sm:table-cell">
+              <Button 
+                variant="ghost" 
+                onClick={() => requestSort('teacher')} 
+                className="flex items-center gap-1 h-auto p-0 hover:bg-transparent font-bold"
+              >
+                Profesor {getSortIcon('teacher')}
+              </Button>
+            </TableHead>
+            <TableHead className="text-center">Acciones</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {sortedAssignments.map(a => (
+            <TableRow key={a.id}>
+              <TableCell>
+                <div className="font-medium">{a.subject?.name || 'N/A'}</div>
+                <div className="text-xs text-muted-foreground">{a.gradeLevels?.map(gl => gl.name).join(', ') || 'N/A'}</div>
+                <div className="sm:hidden text-xs text-muted-foreground mt-1">{a.teacher?.name || 'No asignado'}</div>
+              </TableCell>
+              <TableCell className="text-muted-foreground hidden sm:table-cell">{a.teacher?.name || 'No asignado'}</TableCell>
+              <TableCell className="text-center">
+                <div className="flex justify-center gap-2">
+                  <Button 
+                    variant="ghost" 
+                    size="icon"
+                    onClick={() => {setEditingAssignment(a); setIsModalOpen(true)}}
+                  >
+                    <Edit size={16}/>
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="icon"
+                    onClick={() => handleDeleteAssignment(a.id)}
+                    className="text-red-500 hover:text-red-600 hover:bg-red-100"
+                  >
+                    <Trash2 size={16}/>
+                  </Button>
+                </div>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  );
+
   return (
-    <div className="h-full flex flex-col">
-      {isModalOpen && (
-        <AssignmentFormModal 
-            assignment={editingAssignment} 
-            subjects={subjects} 
-            gradeLevels={gradeLevels.filter(g => g.isEnabled)} 
-            teachers={teachers} 
-            onSave={handleSaveAssignment} 
-            onCancel={() => {setIsModalOpen(false); setEditingAssignment(null);}} 
-        />
-      )}
+    <div className="flex flex-col">
+      <AssignmentFormModal 
+        assignment={editingAssignment}
+        open={isModalOpen}
+        subjects={subjects} 
+        gradeLevels={gradeLevels.filter(g => g.isEnabled)} 
+        teachers={teachers} 
+        onSave={handleSaveAssignment} 
+        onCancel={() => {setIsModalOpen(false); setEditingAssignment(null);}} 
+      />
       <ConfirmationModal
         isOpen={!!assignmentToDelete}
         onConfirm={confirmDeleteAssignment}
@@ -222,52 +336,58 @@ export const AssignmentManagement: React.FC<AssignmentManagementProps> = () => {
         message="¿Seguro que quieres eliminar esta asignación? Todos los datos de calificaciones asociados se perderán."
       />
       
-      <div className="p-4 border-b flex items-center justify-between bg-white rounded-t-lg">
-        <button onClick={() => { setEditingAssignment(null); setIsModalOpen(true); }} className="flex items-center justify-center gap-2 px-3 py-2 bg-white text-slate-700 border border-slate-300 rounded-md hover:bg-slate-100 transition-colors font-medium text-sm">
+      <div className="p-4 border-b flex items-center justify-between bg-white">
+        <Button 
+          onClick={() => { setEditingAssignment(null); setIsModalOpen(true); }}
+          variant="outline"
+          className="gap-2"
+        >
           <PlusCircle size={16} /> Nueva Asignación
-        </button>
+        </Button>
       </div>
       
       {loading ? (
-        <div className="h-64 flex items-center justify-center"><Loader2 className="animate-spin text-indigo-600" size={48} /></div>
-      ) : (
-        <div className="flex-1 overflow-auto custom-scrollbar">
-          <table className="w-full text-sm">
-            <thead className="bg-slate-100 text-slate-600 sticky top-0">
-              <tr>
-                <th className="p-3 text-left font-bold">
-                   <button onClick={() => requestSort('subject')} className="flex items-center hover:text-slate-900">
-                    Asignación (Materia y Grados) {getSortIcon('subject')}
-                  </button>
-                </th>
-                <th className="p-3 text-left font-bold hidden sm:table-cell">
-                   <button onClick={() => requestSort('teacher')} className="flex items-center hover:text-slate-900">
-                    Profesor {getSortIcon('teacher')}
-                  </button>
-                </th>
-                <th className="p-3 text-center font-bold">Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sortedAssignments.map(a => (
-                <tr key={a.id} className="border-b hover:bg-slate-50">
-                  <td className="p-3">
-                    <div className="font-medium">{a.subject?.name || 'N/A'}</div>
-                    <div className="text-xs text-slate-500">{a.gradeLevels?.map(gl => gl.name).join(', ') || 'N/A'}</div>
-                    <div className="sm:hidden text-xs text-slate-500 mt-1">{a.teacher?.name || 'No asignado'}</div>
-                  </td>
-                  <td className="p-3 text-slate-600 hidden sm:table-cell">{a.teacher?.name || 'No asignado'}</td>
-                  <td className="p-3 text-center">
-                    <div className="flex justify-center gap-2">
-                      <button onClick={() => {setEditingAssignment(a); setIsModalOpen(true)}} className="p-2 hover:bg-slate-200 rounded"><Edit size={16}/></button>
-                      <button onClick={() => handleDeleteAssignment(a.id)} className="p-2 text-red-500 hover:bg-red-100 rounded"><Trash2 size={16}/></button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="h-64 flex items-center justify-center">
+          <Loader2 className="animate-spin text-indigo-600" size={48} />
         </div>
+      ) : (
+        <Tabs defaultValue="periodo1" className="flex flex-col">
+          <div className="px-4 pt-4 bg-white">
+            <TabsList className="inline-flex h-10 items-center justify-center rounded-lg bg-slate-100 p-1 text-slate-500 shadow-sm">
+              <TabsTrigger value="periodo1" className="rounded-md px-6 py-1.5 text-sm font-medium transition-all data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow">
+                Periodo 1
+              </TabsTrigger>
+              <TabsTrigger value="periodo2" className="rounded-md px-6 py-1.5 text-sm font-medium transition-all data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow">
+                Periodo 2
+              </TabsTrigger>
+              <TabsTrigger value="periodo3" className="rounded-md px-6 py-1.5 text-sm font-medium transition-all data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow">
+                Periodo 3
+              </TabsTrigger>
+              <TabsTrigger value="resumen" className="rounded-md px-6 py-1.5 text-sm font-medium transition-all data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow">
+                Resumen
+              </TabsTrigger>
+            </TabsList>
+          </div>
+          
+          <TabsContent value="periodo1" className="mt-0">
+            {renderAssignmentsTable()}
+          </TabsContent>
+          
+          <TabsContent value="periodo2" className="mt-0">
+            {renderAssignmentsTable()}
+          </TabsContent>
+          
+          <TabsContent value="periodo3" className="mt-0">
+            {renderAssignmentsTable()}
+          </TabsContent>
+          
+          <TabsContent value="resumen" className="mt-0">
+            <div className="p-8 text-center text-slate-500">
+              <p className="text-lg font-medium">Resumen de todos los periodos</p>
+              <p className="text-sm mt-2">Aquí puedes ver un resumen consolidado de las asignaciones</p>
+            </div>
+          </TabsContent>
+        </Tabs>
       )}
     </div>
   );

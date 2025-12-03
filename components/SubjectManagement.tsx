@@ -1,18 +1,41 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { db } from '../services/db';
 import { Subject } from '../types';
-import { Plus, Edit, Trash2, X, Loader2, PlusCircle, ArrowUp, ArrowDown, ChevronsUpDown } from 'lucide-react';
+import { Edit, Trash2, Loader2, PlusCircle, ArrowUp, ArrowDown, ChevronsUpDown } from 'lucide-react';
 import { ConfirmationModal } from './ConfirmationModal';
 import { useToast } from './Toast';
+import { Button } from './ui/button';
+import { Input } from './ui/input';
+import { Label } from './ui/label';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from './ui/dialog';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from './ui/table';
 
 interface SubjectManagementProps {}
 
 const SubjectFormModal: React.FC<{
   subject: Subject | null;
+  open: boolean;
   onSave: (subject: Partial<Subject>) => void;
   onCancel: () => void;
-}> = ({ subject, onSave, onCancel }) => {
+}> = ({ subject, open, onSave, onCancel }) => {
   const [name, setName] = useState(subject?.name || '');
+
+  useEffect(() => {
+    setName(subject?.name || '');
+  }, [subject]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -20,24 +43,32 @@ const SubjectFormModal: React.FC<{
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
-        <div className="p-4 border-b flex justify-between items-center">
-          <h3 className="text-lg font-bold">{subject ? 'Editar Materia' : 'Nueva Materia'}</h3>
-          <button onClick={onCancel} className="p-1 hover:bg-slate-200 rounded-full"><X size={20} /></button>
-        </div>
+    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onCancel()}>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>{subject ? 'Editar Materia' : 'Nueva Materia'}</DialogTitle>
+        </DialogHeader>
         <form onSubmit={handleSubmit}>
-          <div className="p-6">
-            <label className="text-sm font-medium text-slate-600">Nombre de la Materia</label>
-            <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="mt-1 w-full p-2 border rounded" required />
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">Nombre de la Materia</Label>
+              <Input
+                id="name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+              />
+            </div>
           </div>
-          <div className="p-4 bg-slate-50 flex justify-end gap-2">
-            <button type="button" onClick={onCancel} className="px-4 py-2 bg-slate-200 rounded">Cancelar</button>
-            <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded">Guardar</button>
-          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={onCancel}>
+              Cancelar
+            </Button>
+            <Button type="submit">Guardar</Button>
+          </DialogFooter>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 };
 
@@ -131,13 +162,12 @@ export const SubjectManagement: React.FC<SubjectManagementProps> = () => {
 
   return (
     <div className="h-full flex flex-col">
-      {isModalOpen && (
-        <SubjectFormModal 
-          subject={editingSubject}
-          onSave={handleSaveSubject}
-          onCancel={() => { setIsModalOpen(false); setEditingSubject(null); }}
-        />
-      )}
+      <SubjectFormModal 
+        subject={editingSubject}
+        open={isModalOpen}
+        onSave={handleSaveSubject}
+        onCancel={() => { setIsModalOpen(false); setEditingSubject(null); }}
+      />
       <ConfirmationModal
         isOpen={!!subjectToDelete}
         onConfirm={confirmDeleteSubject}
@@ -146,40 +176,63 @@ export const SubjectManagement: React.FC<SubjectManagementProps> = () => {
         message="¿Seguro que quieres eliminar esta materia? Las asignaciones asociadas pueden verse afectadas."
       />
       <div className="p-4 border-b flex items-center justify-between bg-white rounded-t-lg">
-        <button onClick={() => { setEditingSubject(null); setIsModalOpen(true); }} className="flex items-center justify-center gap-2 px-3 py-2 bg-white text-slate-700 border border-slate-300 rounded-md hover:bg-slate-100 transition-colors font-medium text-sm">
+        <Button 
+          onClick={() => { setEditingSubject(null); setIsModalOpen(true); }}
+          variant="outline"
+          className="gap-2"
+        >
           <PlusCircle size={16} /> Nueva Materia
-        </button>
+        </Button>
       </div>
 
       <div className="flex-1 overflow-auto custom-scrollbar">
         {loading ? (
-            <div className="h-64 flex items-center justify-center"><Loader2 className="animate-spin text-indigo-600" size={48} /></div>
+          <div className="h-64 flex items-center justify-center">
+            <Loader2 className="animate-spin text-indigo-600" size={48} />
+          </div>
         ) : (
-          <table className="w-full text-sm">
-            <thead className="bg-slate-100 text-slate-600 sticky top-0">
-              <tr>
-                <th className="p-3 text-left font-bold">
-                   <button onClick={() => requestSort('name')} className="flex items-center hover:text-slate-900">
+          <Table>
+            <TableHeader className="bg-slate-100 sticky top-0">
+              <TableRow>
+                <TableHead>
+                  <Button 
+                    variant="ghost" 
+                    onClick={() => requestSort('name')} 
+                    className="flex items-center gap-1 h-auto p-0 hover:bg-transparent font-bold"
+                  >
                     Nombre de la Materia {getSortIcon('name')}
-                  </button>
-                </th>
-                <th className="p-3 text-center font-bold">Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
+                  </Button>
+                </TableHead>
+                <TableHead className="text-center">Acciones</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {sortedSubjects.map(subject => (
-                <tr key={subject.id} className="border-b hover:bg-slate-50">
-                  <td className="p-3 font-medium">{subject.name}</td>
-                  <td className="p-3 text-center">
+                <TableRow key={subject.id}>
+                  <TableCell className="font-medium">{subject.name}</TableCell>
+                  <TableCell className="text-center">
                     <div className="flex justify-center gap-2">
-                      <button onClick={() => { setEditingSubject(subject); setIsModalOpen(true); }} className="p-2 hover:bg-slate-200 rounded"><Edit size={16} /></button>
-                      <button onClick={() => handleDeleteSubject(subject.id)} className="p-2 text-red-500 hover:bg-red-100 rounded"><Trash2 size={16} /></button>
+                      <Button 
+                        variant="ghost" 
+                        size="icon"
+                        onClick={() => { setEditingSubject(subject); setIsModalOpen(true); }}
+                      >
+                        <Edit size={16} />
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="icon"
+                        onClick={() => handleDeleteSubject(subject.id)}
+                        className="text-red-500 hover:text-red-600 hover:bg-red-100"
+                      >
+                        <Trash2 size={16} />
+                      </Button>
                     </div>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         )}
       </div>
     </div>

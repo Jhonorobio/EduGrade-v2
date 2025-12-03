@@ -5,6 +5,9 @@ import { generateStudentObservation } from '../services/geminiService';
 import { useToast } from './Toast';
 import { db } from '../services/db';
 import { generateTeacherReportPdf } from '../services/pdfService';
+import { Button } from './ui/button';
+import { Textarea } from './ui/textarea';
+import { Card, CardContent } from './ui/card';
 
 interface ReportProps {
   students: Student[];
@@ -312,44 +315,48 @@ export const AcademicReport: React.FC<ReportProps> = ({ students, data, taskActi
           ) : <span className="text-slate-400 italic">Ninguna</span>}
         </td>
         <td className="border p-3 align-top">
-           <textarea 
-            className="w-full h-24 p-2 text-xs border rounded resize-none focus:outline-indigo-500 bg-slate-50"
+           <Textarea 
+            className="h-24 text-xs resize-none"
             value={periodData.convivenciaProblemas}
             onChange={(e) => handleUpdateField(row.studentId, 'convivenciaProblemas', e.target.value)}
             placeholder="Describir problemas de convivencia..."
           />
         </td>
         <td className="border p-0 text-center align-middle">
-          <button 
+          <Button 
               onClick={() => handleLlegadaTardeToggle(row.studentId)}
-              className={`p-2 rounded ${periodData.llegadaTarde ? 'bg-orange-100 text-orange-600' : 'text-slate-300 hover:text-slate-500'}`}
-           > <Clock size={20} /> </button>
+              variant="ghost"
+              size="icon"
+              className={periodData.llegadaTarde ? 'bg-orange-100 text-orange-600 hover:bg-orange-200' : 'text-slate-300 hover:text-slate-500'}
+           > <Clock size={20} /> </Button>
         </td>
         <td className="border p-3 align-top">
-          <textarea 
-            className="w-full h-24 p-2 text-xs border rounded resize-none focus:outline-indigo-500 bg-slate-50"
+          <Textarea 
+            className="h-24 text-xs resize-none"
             value={periodData.presentacionPersonal}
             onChange={(e) => handleUpdateField(row.studentId, 'presentacionPersonal', e.target.value)}
             placeholder="Recomendaciones de presentación personal..."
           />
         </td>
         <td className="border p-3 align-top relative group">
-          <textarea 
-            className="w-full h-24 p-2 text-xs border rounded resize-none focus:outline-indigo-500 bg-slate-50"
+          <Textarea 
+            className="h-24 text-xs resize-none"
             value={periodData.observaciones}
             onChange={(e) => handleUpdateField(row.studentId, 'observaciones', e.target.value)}
             placeholder="Escriba o genere una observación..."
           />
-          <button 
+          <Button 
             onClick={() => handleGenerateAiObservation(row.studentId)}
             disabled={loadingId === row.studentId}
-            className="absolute bottom-4 right-4 p-1.5 bg-indigo-100 text-indigo-600 rounded-full hover:bg-indigo-200 transition-colors shadow-sm"
+            size="icon"
+            variant="ghost"
+            className="absolute bottom-4 right-4 h-8 w-8 bg-indigo-100 text-indigo-600 hover:bg-indigo-200"
             title="Generar con AI"
           >
             {loadingId === row.studentId ? (
-              <div className="animate-spin h-4 w-4 border-2 border-indigo-600 border-t-transparent rounded-full"></div>
+              <Loader2 size={16} className="animate-spin" />
             ) : ( <Wand2 size={16} /> )}
-          </button>
+          </Button>
         </td>
       </tr>
     );
@@ -426,8 +433,8 @@ export const AcademicReport: React.FC<ReportProps> = ({ students, data, taskActi
             <div className="space-y-3 border-t pt-3">
                 <div>
                     <h4 className="text-xs font-semibold text-slate-600 mb-1">Problemas de Convivencia</h4>
-                    <textarea
-                        className="w-full h-24 p-2 text-xs border rounded resize-none focus:outline-indigo-500 bg-slate-50"
+                    <Textarea
+                        className="h-24 text-xs resize-none"
                         value={periodData.convivenciaProblemas}
                         onChange={(e) => handleUpdateField(row.studentId, 'convivenciaProblemas', e.target.value)}
                         placeholder="Describir problemas..."
@@ -435,8 +442,8 @@ export const AcademicReport: React.FC<ReportProps> = ({ students, data, taskActi
                 </div>
                 <div>
                   <h4 className="text-xs font-semibold text-slate-600 mb-1">Presentación Personal / Recomendaciones</h4>
-                  <textarea 
-                    className="w-full h-24 p-2 text-xs border rounded resize-none focus:outline-indigo-500 bg-slate-50"
+                  <Textarea 
+                    className="h-24 text-xs resize-none"
                     value={periodData.presentacionPersonal}
                     onChange={(e) => handleUpdateField(row.studentId, 'presentacionPersonal', e.target.value)}
                     placeholder="Recomendaciones de presentación personal..."
@@ -445,29 +452,32 @@ export const AcademicReport: React.FC<ReportProps> = ({ students, data, taskActi
                 <div>
                     <h4 className="text-xs font-semibold text-slate-600 mb-1">Observaciones (AI)</h4>
                     <div className="relative group">
-                        <textarea 
-                          className="w-full h-24 p-2 text-xs border rounded resize-none focus:outline-indigo-500 bg-slate-50"
+                        <Textarea 
+                          className="h-24 text-xs resize-none"
                           value={periodData.observaciones}
                           onChange={(e) => handleUpdateField(row.studentId, 'observaciones', e.target.value)}
                           placeholder="Escriba o genere una observación..."
                         />
-                        <button 
+                        <Button 
                           onClick={() => handleGenerateAiObservation(row.studentId)}
                           disabled={loadingId === student.id}
-                          className="absolute bottom-2 right-2 p-1.5 bg-indigo-100 text-indigo-600 rounded-full hover:bg-indigo-200 transition-colors shadow-sm"
+                          size="icon"
+                          variant="ghost"
+                          className="absolute bottom-2 right-2 h-8 w-8 bg-indigo-100 text-indigo-600 hover:bg-indigo-200"
                           title="Generar con AI"
                         >
                           {loadingId === student.id ? (
-                            <div className="animate-spin h-4 w-4 border-2 border-indigo-600 border-t-transparent rounded-full"></div>
+                            <Loader2 size={16} className="animate-spin" />
                           ) : ( <Wand2 size={16} /> )}
-                        </button>
+                        </Button>
                     </div>
                 </div>
                 <div className="flex items-center gap-4 border-t pt-3">
-                    <button 
+                    <Button 
                         onClick={() => handleLlegadaTardeToggle(row.studentId)}
-                        className={`flex items-center gap-2 text-sm p-2 rounded ${periodData.llegadaTarde ? 'text-orange-600 bg-orange-50' : 'text-slate-500'}`}
-                    > <Clock size={18} /> <span>Llegada Tarde</span> </button>
+                        variant="ghost"
+                        className={`gap-2 ${periodData.llegadaTarde ? 'text-orange-600 bg-orange-50 hover:bg-orange-100' : 'text-slate-500'}`}
+                    > <Clock size={18} /> <span>Llegada Tarde</span> </Button>
                 </div>
             </div>
         </div>
@@ -511,30 +521,38 @@ export const AcademicReport: React.FC<ReportProps> = ({ students, data, taskActi
     <div className="h-full flex flex-col">
       <div className="h-full flex flex-col">
         <div className="p-4 border-b flex items-center justify-between bg-white rounded-t-lg">
-          <button onClick={onBackToGradeBook} className="flex items-center justify-center gap-2 px-4 py-2 bg-white text-slate-700 border border-slate-300 rounded-md hover:bg-slate-100 transition-colors font-medium text-sm">
+          <Button onClick={onBackToGradeBook} variant="outline" className="gap-2">
               <ArrowLeft size={16} /> Volver a la Planilla
-          </button>
+          </Button>
           <div className="flex items-center gap-4">
             <div className="text-sm text-slate-500 w-48 text-right">
               {saveStatus === 'saving' && <span className="flex items-center justify-end gap-1.5"><Loader2 size={14} className="animate-spin" /> Guardando...</span>}
               {saveStatus === 'saved' && <span className="italic">Cambios guardados</span>}
               {saveStatus === 'unsaved' && <span className="text-yellow-600 font-medium">Cambios sin guardar</span>}
             </div>
-            <button 
+            <Button 
               onClick={() => handleSaveChanges(true)} 
-              disabled={saveStatus === 'saved' || saveStatus === 'saving'} 
-              className="flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors font-medium text-sm shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={saveStatus === 'saved' || saveStatus === 'saving'}
+              className="gap-2"
             >
                 <Save size={16} /> Guardar Informe
-            </button>
-            <button onClick={handleSendToDirector} disabled={isSending || currentPeriod === 'Resumen'} className="flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors font-medium text-sm shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">
+            </Button>
+            <Button 
+              onClick={handleSendToDirector} 
+              disabled={isSending || currentPeriod === 'Resumen'}
+              className="gap-2 bg-green-600 hover:bg-green-700"
+            >
               {isSending ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
               {isSending ? 'Enviando...' : 'Enviar al Director'}
-            </button>
-            <button onClick={handleSavePdf} disabled={isGeneratingPdf || currentPeriod === 'Resumen'} className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors font-medium text-sm shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">
+            </Button>
+            <Button 
+              onClick={handleSavePdf} 
+              disabled={isGeneratingPdf || currentPeriod === 'Resumen'}
+              className="gap-2"
+            >
               {isGeneratingPdf ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
               {isGeneratingPdf ? 'Generando...' : 'Guardar PDF'}
-            </button>
+            </Button>
           </div>
         </div>
 

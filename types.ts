@@ -10,6 +10,7 @@ export interface User {
   email: string;
   role: UserRole;
   avatar?: string;
+  gender?: 'male' | 'female';
   username: string;
   password?: string; // Should only be used for creation/update
 }

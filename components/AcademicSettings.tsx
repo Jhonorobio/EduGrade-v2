@@ -3,6 +3,18 @@ import { Loader2, Save, AlertCircle } from 'lucide-react';
 import { db } from '../services/db';
 import { AcademicSettings as AcademicSettingsType } from '../types';
 import { useToast } from './Toast';
+import { Button } from './ui/button';
+import { Input } from './ui/input';
+import { Label } from './ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from './ui/select';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from './ui/card';
+import { Alert, AlertDescription } from './ui/alert';
 
 const AcademicSettings: React.FC = () => {
   const [settings, setSettings] = useState<AcademicSettingsType | null>(null);
@@ -98,62 +110,81 @@ const AcademicSettings: React.FC = () => {
   const totalWeight = Object.values(settings.periodWeights).reduce((sum: number, weight) => sum + Number(weight), 0);
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border h-full">
-      <div className="p-4 border-b">
-        <h2 className="text-xl font-bold text-slate-800">Ajustes Académicos</h2>
-        <p className="text-sm text-slate-500">Configura los periodos y ponderaciones para el año lectivo.</p>
-      </div>
-      <div className="p-6 space-y-8">
-        <div>
-          <h3 className="text-lg font-semibold text-slate-700">Número de Periodos</h3>
-          <p className="text-sm text-slate-500 mb-2">Selecciona cuántos periodos tendrá el año lectivo. Esto reajustará las ponderaciones.</p>
-          <select 
-            value={settings.periodCount}
-            onChange={handlePeriodCountChange}
-            className="p-2 border rounded-md bg-white w-full max-w-xs"
-          >
-            <option value="2">2 Periodos (Semestral)</option>
-            <option value="3">3 Periodos (Trimestral)</option>
-            <option value="4">4 Periodos (Bimestral)</option>
-          </select>
+    <Card className="h-full">
+      <CardHeader>
+        <CardTitle>Ajustes Académicos</CardTitle>
+        <CardDescription>Configura los periodos y ponderaciones para el año lectivo.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-8">
+        <div className="space-y-4">
+          <div>
+            <h3 className="text-lg font-semibold text-slate-700">Número de Periodos</h3>
+            <p className="text-sm text-muted-foreground mb-3">Selecciona cuántos periodos tendrá el año lectivo. Esto reajustará las ponderaciones.</p>
+            <Select 
+              value={settings.periodCount.toString()}
+              onValueChange={(value) => handlePeriodCountChange({ target: { value } } as any)}
+            >
+              <SelectTrigger className="w-full max-w-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="2">2 Periodos (Semestral)</SelectItem>
+                <SelectItem value="3">3 Periodos (Trimestral)</SelectItem>
+                <SelectItem value="4">4 Periodos (Bimestral)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
         
-        <div>
-           <h3 className="text-lg font-semibold text-slate-700">Ponderación de Periodos</h3>
-           <p className="text-sm text-slate-500 mb-4">Asigna el porcentaje de la nota final para cada periodo. La suma debe ser 100%.</p>
+        <div className="space-y-4">
+           <div>
+             <h3 className="text-lg font-semibold text-slate-700">Ponderación de Periodos</h3>
+             <p className="text-sm text-muted-foreground mb-4">Asigna el porcentaje de la nota final para cada periodo. La suma debe ser 100%.</p>
+           </div>
            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {Array.from({ length: settings.periodCount }, (_, i) => i + 1).map(period => (
-                <div key={period}>
-                  <label className="block text-sm font-medium text-slate-600 mb-1">Periodo {period}</label>
+                <div key={period} className="space-y-2">
+                  <Label htmlFor={`period-${period}`}>Periodo {period}</Label>
                   <div className="relative">
-                    <input 
+                    <Input 
+                      id={`period-${period}`}
                       type="number"
                       value={settings.periodWeights[period] || 0}
                       onChange={(e) => handleWeightChange(period, e.target.value)}
-                      className="w-full p-2 border rounded-md"
+                      className="pr-8"
                     />
-                    <span className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm text-slate-400">%</span>
+                    <span className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm text-muted-foreground pointer-events-none">%</span>
                   </div>
                 </div>
               ))}
            </div>
-           <div className={`mt-4 text-sm font-semibold flex items-center gap-2 ${totalWeight === 100 ? 'text-green-600' : 'text-red-600'}`}>
-              {totalWeight !== 100 && <AlertCircle size={16} />}
-              <span>Suma Total: {totalWeight}%</span>
-           </div>
+           {totalWeight !== 100 ? (
+             <Alert variant="destructive">
+               <AlertCircle className="h-4 w-4" />
+               <AlertDescription>
+                 Suma Total: {totalWeight}% - La suma debe ser exactamente 100%
+               </AlertDescription>
+             </Alert>
+           ) : (
+             <Alert className="border-green-200 bg-green-50 text-green-800">
+               <AlertDescription className="flex items-center gap-2">
+                 <span className="font-semibold">✓ Suma Total: {totalWeight}%</span>
+               </AlertDescription>
+             </Alert>
+           )}
         </div>
-      </div>
-       <div className="p-4 border-t bg-slate-50 flex justify-end">
-          <button
-            onClick={handleSave}
-            disabled={saving || totalWeight !== 100}
-            className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors font-medium text-sm shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {saving ? <Loader2 size={16} className="animate-spin"/> : <Save size={16} />}
-            Guardar Cambios
-          </button>
-       </div>
-    </div>
+      </CardContent>
+      <CardFooter className="bg-slate-50 flex justify-end">
+        <Button
+          onClick={handleSave}
+          disabled={saving || totalWeight !== 100}
+          className="gap-2"
+        >
+          {saving ? <Loader2 size={16} className="animate-spin"/> : <Save size={16} />}
+          Guardar Cambios
+        </Button>
+      </CardFooter>
+    </Card>
   );
 };
 

@@ -1,8 +1,18 @@
 import React, { useState, useEffect, memo, useCallback, useRef, useMemo } from 'react';
-import { Plus, Trash2, Save, BarChart2, ChevronDown, Edit, X, PlusCircle, Loader2, AlertCircle } from 'lucide-react';
+import { Trash2, Save, BarChart2, ChevronDown, Edit, PlusCircle, Loader2, AlertCircle, Check, CloudCheck } from 'lucide-react';
 import { Student, StudentGradeRecord, PerformanceLevel, Activity, PeriodGradeData, AcademicSettings } from '../types';
 import { ConfirmationModal } from './ConfirmationModal';
 import { useToast } from './Toast';
+import { Button } from './ui/button';
+import { Input } from './ui/input';
+import { Label } from './ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from './ui/dialog';
+import { Card, CardContent } from './ui/card';
+import { Alert, AlertDescription } from './ui/alert';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from './ui/tabs';
+import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from './ui/table';
+import { Badge } from './ui/badge';
 
 
 interface GradeBookProps {
@@ -27,71 +37,63 @@ const getGradeInputColor = (value: number | string | null | undefined) => {
 const AddActivityModal: React.FC<{
   isOpen: boolean;
   onClose: () => void;
-  onAdd: (type: 'tasks' | 'workshops', name: string, date: string) => void;
-}> = ({ isOpen, onClose, onAdd }) => {
-  if (!isOpen) return null;
-
-  const [type, setType] = useState<'tasks' | 'workshops'>('tasks');
+  onAdd: (name: string, date: string) => void;
+  type: 'tasks' | 'workshops';
+}> = ({ isOpen, onClose, onAdd, type }) => {
   const [name, setName] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (name.trim()) {
-      onAdd(type, name, date);
+      onAdd(name, date);
+      setName('');
+      setDate(new Date().toISOString().split('T')[0]);
       onClose();
     }
   };
 
+  const title = type === 'tasks' ? 'Agregar Apuntes/Tareas' : 'Agregar Talleres y Exposiciones';
+
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 animate-fade-in-up">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
-        <div className="p-4 border-b flex justify-between items-center">
-          <h3 className="text-lg font-bold">Agregar Nueva Actividad</h3>
-          <button onClick={onClose} className="p-1 hover:bg-neutral-200 rounded-full"><X size={20} /></button>
-        </div>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+        </DialogHeader>
         <form onSubmit={handleSubmit}>
-          <div className="p-6 space-y-4">
-            <div>
-              <label className="text-sm font-medium text-neutral-600">Categoría</label>
-              <select
-                value={type}
-                onChange={(e) => setType(e.target.value as 'tasks' | 'workshops')}
-                className="mt-1 w-full p-2 border rounded bg-white"
-              >
-                <option value="tasks">Apuntes y Tareas</option>
-                <option value="workshops">Talleres y Exposiciones</option>
-              </select>
-            </div>
-            <div>
-              <label className="text-sm font-medium text-neutral-600">Nombre de la Actividad</label>
-              <input
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="activityName">Nombre de la Actividad</Label>
+              <Input
+                id="activityName"
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="mt-1 w-full p-2 border rounded"
                 placeholder="Ej: Taller #1"
                 required
               />
             </div>
-             <div>
-              <label className="text-sm font-medium text-neutral-600">Fecha</label>
-              <input
+            <div className="space-y-2">
+              <Label htmlFor="activityDate">Fecha</Label>
+              <Input
+                id="activityDate"
                 type="date"
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
-                className="mt-1 w-full p-2 border rounded"
                 required
               />
             </div>
           </div>
-          <div className="p-4 bg-neutral-50 flex justify-end gap-2">
-            <button type="button" onClick={onClose} className="px-4 py-2 bg-neutral-200 rounded-md">Cancelar</button>
-            <button type="submit" className="px-4 py-2 bg-neutral-800 text-white rounded-md">Agregar</button>
-          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={onClose}>
+              Cancelar
+            </Button>
+            <Button type="submit">Agregar</Button>
+          </DialogFooter>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 };
 
@@ -102,19 +104,19 @@ const GradeBookRow = memo<{
   student: Student | undefined;
   taskColumns: number;
   workshopColumns: number;
-  calculateRow: (gradeData: PeriodGradeData) => { definitive: number; performance: PerformanceLevel; };
+  calculateRow: (gradeData: PeriodGradeData, numTaskColumns: number, numWorkshopColumns: number) => { definitive: number; performance: PerformanceLevel; };
   getPerformanceColor: (p: PerformanceLevel) => string;
   updateGrade: (studentId: string, type: 'tasks' | 'workshops', index: number, value: string) => void;
   updateSingleGrade: (studentId: string, field: 'attitude' | 'exam', value: string) => void;
   handleKeyDown: (event: React.KeyboardEvent<HTMLInputElement>, studentId: string, currentType: 'tasks' | 'workshops' | 'attitude' | 'exam', currentIndex?: number) => void;
 }>(({ studentId, periodData, student, taskColumns, workshopColumns, calculateRow, getPerformanceColor, updateGrade, updateSingleGrade, handleKeyDown }) => {
-  const stats = calculateRow(periodData);
+  const stats = calculateRow(periodData, taskColumns, workshopColumns);
   return (
     <tr className="border-b hover:bg-neutral-50 group">
-      <td className="p-2 border-r font-medium text-neutral-700 sticky left-0 bg-white group-hover:bg-neutral-50 z-10 whitespace-nowrap">{student?.name || 'Unknown'}</td>
+      <td className="p-2 border-r font-medium text-neutral-700 sticky left-0 bg-white group-hover:bg-neutral-50 z-10 whitespace-nowrap shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)]">{student?.name || 'Unknown'}</td>
       {taskColumns > 0 ? (
         Array.from({ length: taskColumns }).map((_, i) => (
-          <td key={`t-${i}`} className="p-0">
+          <td key={`t-${i}`} className="p-0 border-r">
             <input 
               id={`grade-input-${studentId}-tasks-${i}`}
               type="number" 
@@ -126,11 +128,11 @@ const GradeBookRow = memo<{
           </td>
         ))
       ) : (
-        <td className="p-2 text-center text-xs text-neutral-400 italic bg-neutral-50">N/A</td>
+        <td className="p-2 text-center text-xs text-neutral-400 italic bg-neutral-50 border-r">N/A</td>
       )}
       {workshopColumns > 0 ? (
         Array.from({ length: workshopColumns }).map((_, i) => (
-          <td key={`w-${i}`} className="p-0">
+          <td key={`w-${i}`} className="p-0 border-r">
             <input 
               id={`grade-input-${studentId}-workshops-${i}`}
               type="number" 
@@ -142,9 +144,9 @@ const GradeBookRow = memo<{
           </td>
         ))
       ) : (
-        <td className="p-2 text-center text-xs text-neutral-400 italic bg-neutral-50">N/A</td>
+        <td className="p-2 text-center text-xs text-neutral-400 italic bg-neutral-50 border-r">N/A</td>
       )}
-      <td className="p-0">
+      <td className="p-0 border-r">
         <input 
           id={`grade-input-${studentId}-attitude`}
           type="number" 
@@ -154,7 +156,7 @@ const GradeBookRow = memo<{
           onKeyDown={(e) => handleKeyDown(e, studentId, 'attitude')}
         />
       </td>
-      <td className="p-0">
+      <td className="p-0 border-r">
         <input 
           id={`grade-input-${studentId}-exam`}
           type="number" 
@@ -164,7 +166,7 @@ const GradeBookRow = memo<{
           onKeyDown={(e) => handleKeyDown(e, studentId, 'exam')}
         />
       </td>
-      <td className={`p-2 text-center font-bold ${stats.definitive < 6.0 ? 'text-red-600' : 'text-neutral-800'}`}>{stats.definitive.toFixed(1)}</td>
+      <td className={`p-2 text-center font-bold border-r ${stats.definitive < 6.0 ? 'text-red-600' : 'text-neutral-800'}`}>{stats.definitive.toFixed(1)}</td>
       <td className="p-2 text-center"><span className={`px-2 py-1 rounded text-xs font-bold ${getPerformanceColor(stats.performance)}`}>{stats.performance}</span></td>
     </tr>
   );
@@ -178,26 +180,30 @@ const GradeBookCard = memo<{
   student: Student | undefined;
   taskActivities: Activity[];
   workshopActivities: Activity[];
-  calculateRow: (gradeData: PeriodGradeData) => { definitive: number; performance: PerformanceLevel; };
+  calculateRow: (gradeData: PeriodGradeData, numTaskColumns: number, numWorkshopColumns: number) => { definitive: number; performance: PerformanceLevel; };
   getPerformanceColor: (p: PerformanceLevel) => string;
   updateGrade: (studentId: string, type: 'tasks' | 'workshops', index: number, value: string) => void;
   updateSingleGrade: (studentId: string, field: 'attitude' | 'exam', value: string) => void;
 }>(({ studentId, periodData, student, taskActivities, workshopActivities, calculateRow, getPerformanceColor, updateGrade, updateSingleGrade }) => {
     const [isOpen, setIsOpen] = useState(false);
-    const stats = calculateRow(periodData);
+    const stats = calculateRow(periodData, taskActivities.length, workshopActivities.length);
 
     return (
-        <div className="bg-white rounded-lg shadow-sm border">
-            <button onClick={() => setIsOpen(!isOpen)} className="w-full flex justify-between items-center p-4 text-left">
-                <span className="font-bold text-neutral-800 flex-1">{student?.name}</span>
+        <Card>
+            <Button 
+              onClick={() => setIsOpen(!isOpen)} 
+              variant="ghost"
+              className="w-full flex justify-between items-center p-4 h-auto"
+            >
+                <span className="font-bold text-neutral-800 flex-1 text-left">{student?.name}</span>
                 <div className="flex items-center gap-2 ml-2">
                     <span className={`px-2 py-1 rounded text-xs font-bold ${getPerformanceColor(stats.performance)}`}>{stats.performance}</span>
                     <span className={`font-bold text-lg ${stats.definitive < 6.0 ? 'text-red-600' : 'text-neutral-800'}`}>{stats.definitive.toFixed(1)}</span>
                     <ChevronDown size={20} className={`text-neutral-500 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
                 </div>
-            </button>
+            </Button>
             {isOpen && (
-                <div className="p-4 border-t space-y-4">
+                <CardContent className="pt-0 space-y-4">
                     {/* Tareas */}
                     {taskActivities.length > 0 && (
                       <div>
@@ -261,9 +267,9 @@ const GradeBookCard = memo<{
                             />
                         </div>
                     </div>
-                </div>
+                </CardContent>
             )}
-        </div>
+        </Card>
     );
 });
 GradeBookCard.displayName = 'GradeBookCard';
@@ -271,7 +277,7 @@ GradeBookCard.displayName = 'GradeBookCard';
 const ToggleSwitch: React.FC<{ checked: boolean; onChange: () => void; }> = ({ checked, onChange }) => (
   <label className="relative inline-flex items-center cursor-pointer">
     <input type="checkbox" checked={checked} onChange={onChange} className="sr-only peer" />
-    <div className="w-11 h-6 bg-neutral-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-neutral-800"></div>
+    <div className="w-11 h-6 bg-neutral-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
   </label>
 );
 
@@ -280,6 +286,7 @@ export const GradeBook: React.FC<GradeBookProps> = ({ students, data, taskActivi
   const [localTaskActivities, setLocalTaskActivities] = useState<{ [p: number]: Activity[] }>(taskActivities);
   const [localWorkshopActivities, setLocalWorkshopActivities] = useState<{ [p: number]: Activity[] }>(workshopActivities);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [modalActivityType, setModalActivityType] = useState<'tasks' | 'workshops'>('tasks');
   const [currentPeriod, setCurrentPeriod] = useState<number | 'Resumen'>(1);
   const [isAverageViewEnabled, setIsAverageViewEnabled] = useState(false);
 
@@ -395,6 +402,15 @@ export const GradeBook: React.FC<GradeBookProps> = ({ students, data, taskActivi
   const taskColumns = currentTaskActivities.length;
   const workshopColumns = currentWorkshopActivities.length;
 
+  // Reset scroll when period changes
+  useEffect(() => {
+    const scrollContainers = document.querySelectorAll('.overflow-auto');
+    scrollContainers.forEach(container => {
+      container.scrollTop = 0;
+      container.scrollLeft = 0;
+    });
+  }, [currentPeriod]);
+
   const createEmptyPeriodData = (): PeriodGradeData => ({
     tasks: [],
     workshops: [],
@@ -462,15 +478,20 @@ export const GradeBook: React.FC<GradeBookProps> = ({ students, data, taskActivi
     setSaveError(null);
   };
 
-  const addActivity = (type: 'tasks' | 'workshops', name: string, date: string) => {
+  const addActivity = (name: string, date: string) => {
     if (typeof currentPeriod === 'string') return;
-    const updater = type === 'tasks' ? setLocalTaskActivities : setLocalWorkshopActivities;
+    const updater = modalActivityType === 'tasks' ? setLocalTaskActivities : setLocalWorkshopActivities;
     updater(prev => {
        const newActivitiesForPeriod = [...(prev[currentPeriod] || []), { name, date }];
        return { ...prev, [currentPeriod]: newActivitiesForPeriod };
     });
     setSaveStatus('unsaved');
     setSaveError(null);
+  };
+
+  const openAddModal = (type: 'tasks' | 'workshops') => {
+    setModalActivityType(type);
+    setIsAddModalOpen(true);
   };
 
   const handleConfirmRemoveActivity = () => {
@@ -515,9 +536,9 @@ export const GradeBook: React.FC<GradeBookProps> = ({ students, data, taskActivi
     return pTasks + pWorkshops + pAttitude + pExam;
   };
 
-  const calculateRow = (gradeData: PeriodGradeData) => {
-    const taskAvg = gradeData.tasks.slice(0, taskColumns).reduce((a, b) => a + (b || 0), 0) / Math.max(taskColumns, 1);
-    const workshopAvg = gradeData.workshops.slice(0, workshopColumns).reduce((a, b) => a + (b || 0), 0) / Math.max(workshopColumns, 1);
+  const calculateRow = (gradeData: PeriodGradeData, numTaskColumns: number, numWorkshopColumns: number) => {
+    const taskAvg = gradeData.tasks.slice(0, numTaskColumns).reduce((a, b) => a + (b || 0), 0) / Math.max(numTaskColumns, 1);
+    const workshopAvg = gradeData.workshops.slice(0, numWorkshopColumns).reduce((a, b) => a + (b || 0), 0) / Math.max(numWorkshopColumns, 1);
     const pTasks = taskAvg * 0.20;
     const pWorkshops = workshopAvg * 0.20;
     const pAttitude = (gradeData.attitude || 0) * 0.20;
@@ -625,7 +646,7 @@ export const GradeBook: React.FC<GradeBookProps> = ({ students, data, taskActivi
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border flex flex-col h-full">
+    <div className="flex flex-col">
       <ConfirmationModal
         isOpen={!!activityToDelete}
         onConfirm={handleConfirmRemoveActivity}
@@ -637,217 +658,276 @@ export const GradeBook: React.FC<GradeBookProps> = ({ students, data, taskActivi
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
         onAdd={addActivity}
+        type={modalActivityType}
       />
-      <div className="p-4 border-b flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-2">
-            <button onClick={() => setIsAddModalOpen(true)} disabled={currentPeriod === 'Resumen' || isAverageViewEnabled} className="flex items-center justify-center gap-2 px-3 py-2 bg-white text-neutral-700 border border-neutral-300 rounded-md hover:bg-neutral-100 transition-colors font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed">
-                <PlusCircle size={16} /> Agregar Actividad
-            </button>
-            <button onClick={onViewReport} className="flex items-center justify-center gap-2 px-3 py-2 bg-white text-neutral-700 border border-neutral-300 rounded-md hover:bg-neutral-100 transition-colors font-medium text-sm">
-                <BarChart2 size={16} /> Ver Informes
-            </button>
-        </div>
-        <div className="flex items-center gap-4">
+      <Tabs value={String(currentPeriod)} onValueChange={(value) => setCurrentPeriod(value === 'Resumen' ? 'Resumen' : Number(value))} className="!gap-0">
+        <div className="px-4 py-2 flex-shrink-0 flex items-center justify-between gap-4 flex-wrap">
+          <div className="flex items-center gap-3">
+            <Button 
+              onClick={onViewReport}
+              variant="outline"
+              size="sm"
+              className="gap-1.5 h-9"
+            >
+                <BarChart2 size={14} /> Ver Informes
+            </Button>
+            
+            <TabsList className="inline-flex h-9 items-center justify-center rounded-lg bg-neutral-100 p-1">
+            {periodsWithSummary.map(p => (
+              <TabsTrigger 
+                key={p} 
+                value={String(p)}
+                className="inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium ring-offset-white transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow"
+              >
+                {typeof p === 'number' ? `Periodo ${p}` : p}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+          </div>
+          
+          <div className="flex items-center gap-3">
             {currentPeriod !== 'Resumen' && (
               <div className="flex items-center gap-2">
                 <ToggleSwitch checked={isAverageViewEnabled} onChange={() => setIsAverageViewEnabled(p => !p)} />
-                <span className="text-sm font-medium text-neutral-700">Ver Promedios</span>
+                <span className="text-xs font-medium text-neutral-700">Ver Promedios</span>
               </div>
             )}
             <div className="flex items-center gap-2">
               <ToggleSwitch checked={isAutoSaveEnabled} onChange={() => setIsAutoSaveEnabled(p => !p)} />
-              <span className="text-sm font-medium text-neutral-700">Autoguardado</span>
+              <span className="text-xs font-medium text-neutral-700">Autoguardado</span>
             </div>
-            <div className="flex items-center gap-3">
-              <div className="text-sm text-neutral-500 w-48 text-right">
-                {saveStatus === 'saving' && <span className="flex items-center justify-end gap-1.5"><Loader2 size={14} className="animate-spin" /> Guardando...</span>}
-                {saveStatus === 'saved' && <span className="italic">Todos los cambios guardados</span>}
-                {saveStatus === 'unsaved' && <span className="text-yellow-600 font-medium">Cambios sin guardar</span>}
-                {saveStatus === 'error' && <span className="text-red-600 font-medium flex items-center justify-end gap-1.5"><AlertCircle size={14} /> Error al guardar</span>}
-              </div>
-              <button 
-                onClick={() => handleSaveChanges(true)} 
-                disabled={saveStatus === 'saved' || saveStatus === 'saving'} 
-                className="flex items-center justify-center gap-2 px-4 py-2 bg-neutral-800 text-white rounded-md hover:bg-neutral-900 transition-colors font-medium text-sm shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                  <Save size={16} /> Guardar Cambios
-              </button>
-            </div>
-        </div>
-      </div>
-
-      <div className="border-b px-4">
-        <div className="flex -mb-px">
-            {periodsWithSummary.map(p => (
-                <button 
-                    key={p} 
-                    onClick={() => setCurrentPeriod(p)} 
-                    className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${currentPeriod === p 
-                        ? 'border-neutral-800 text-neutral-800' 
-                        : 'border-transparent text-neutral-500 hover:text-neutral-700 hover:border-neutral-300'}`}
-                >
-                    {typeof p === 'number' ? `Periodo ${p}` : p}
-                </button>
-            ))}
-        </div>
-      </div>
-      
-      {saveStatus === 'error' && (
-          <div className="p-4 m-4 bg-red-50 border-l-4 border-red-500 text-red-800 rounded-r-lg" role="alert">
-              <div className="flex items-start">
-                <AlertCircle className="h-5 w-5 mr-3 mt-0.5" />
-                <div>
-                  <p className="font-bold">No se pudieron guardar los cambios</p>
-                  <p className="text-sm">{saveError}</p>
+            
+            {/* Indicador de estado */}
+            {saveStatus === 'unsaved' && <span className="text-yellow-600 font-medium text-xs">Cambios sin guardar</span>}
+            {saveStatus === 'error' && <span className="text-red-600 font-medium flex items-center gap-1.5 text-xs"><AlertCircle size={12} /> Error</span>}
+            
+            {/* Contenedor estilo tab para spinner/ícono + botón */}
+            <div className="inline-flex h-9 items-center gap-2 px-2 bg-neutral-50 rounded-lg">
+              {saveStatus === 'saving' && <Loader2 size={16} className="animate-spin text-neutral-500" />}
+              {saveStatus === 'saved' && (
+                <div title="Guardado">
+                  <CloudCheck size={18} className="text-green-600" />
                 </div>
-              </div>
+              )}
+              
+              <Button 
+                onClick={() => handleSaveChanges(true)} 
+                disabled={saveStatus === 'saved' || saveStatus === 'saving'}
+                variant="outline"
+                size="sm"
+                className="gap-1.5 bg-white h-7 text-xs px-2"
+              >
+                <Save size={14} /> Guardar
+              </Button>
+            </div>
           </div>
-      )}
+        </div>
+      
+        {saveStatus === 'error' && (
+          <div className="p-4 m-4">
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                <p className="font-bold">No se pudieron guardar los cambios</p>
+                <p className="text-sm">{saveError}</p>
+              </AlertDescription>
+            </Alert>
+          </div>
+        )}
 
-
-      {currentPeriod !== 'Resumen' ? (
-        <>
+        {/* Period Tabs Content */}
+        {periods.map(period => {
+          const periodTaskActivities = localTaskActivities[period] || [];
+          const periodWorkshopActivities = localWorkshopActivities[period] || [];
+          const periodTaskColumns = periodTaskActivities.length;
+          const periodWorkshopColumns = periodWorkshopActivities.length;
+          
+          return (
+            <TabsContent key={period} value={String(period)} className="!m-0 !p-0" style={{ display: 'block' }}>
           {/* Desktop Table View */}
-          <div className="flex-1 overflow-auto custom-scrollbar hidden md:block">
+          <div className="hidden md:block p-4">
+            <div className="w-full overflow-x-auto overflow-y-visible custom-scrollbar" style={{ maxWidth: '100%' }}>
             {isAverageViewEnabled ? (
-                <table className="w-full text-sm text-left">
-                  <thead className="text-neutral-700 sticky top-0 z-20 bg-white">
-                    <tr className="border-b">
-                      <th className="p-3 font-bold min-w-[200px] sticky left-0 bg-white z-30 border-r">Estudiante</th>
-                      <th className="p-2 text-center w-32 font-bold bg-neutral-50">Prom. Tareas</th>
-                      <th className="p-2 text-center w-32 font-bold bg-neutral-50">Prom. Talleres</th>
-                      <th className="p-2 text-center w-32 font-bold bg-neutral-50">Actitudinal</th>
-                      <th className="p-2 text-center w-32 font-bold bg-neutral-50">Evaluación</th>
-                      <th className="p-2 text-center w-24 font-bold bg-neutral-100">Final</th>
-                      <th className="p-2 text-center w-28 font-bold bg-neutral-100">Desempeño</th>
-                    </tr>
-                  </thead>
-                  <tbody>
+                <Table>
+                  <TableHeader className="sticky top-0 z-10 bg-neutral-100 shadow-sm">
+                    <TableRow className="bg-neutral-100">
+                      <TableHead className="text-left min-w-[200px] sticky left-0 bg-neutral-100 z-30 border-r shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)]">Estudiante</TableHead>
+                      <TableHead className="text-center w-32 bg-neutral-100 border-r">Prom. Tareas</TableHead>
+                      <TableHead className="text-center w-32 bg-neutral-100 border-r">Prom. Talleres</TableHead>
+                      <TableHead className="text-center w-32 bg-neutral-100 border-r">Actitudinal</TableHead>
+                      <TableHead className="text-center w-32 bg-neutral-100 border-r">Evaluación</TableHead>
+                      <TableHead className="text-center w-24 bg-neutral-100 border-r">Final</TableHead>
+                      <TableHead className="text-center w-28 bg-neutral-100">Desempeño</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
                     {localData.map((row) => {
                       const student = students.find(s => s.id === row.studentId);
-                      const periodData = row.periods[currentPeriod as number] || createEmptyPeriodData();
+                      const periodData = row.periods[period] || createEmptyPeriodData();
                       
-                      const taskAvg = periodData.tasks.slice(0, taskColumns).reduce((a, b) => a + (b || 0), 0) / Math.max(taskColumns, 1);
-                      const workshopAvg = periodData.workshops.slice(0, workshopColumns).reduce((a, b) => a + (b || 0), 0) / Math.max(workshopColumns, 1);
-                      const { definitive, performance } = calculateRow(periodData);
+                      const taskAvg = periodData.tasks.slice(0, periodTaskColumns).reduce((a, b) => a + (b || 0), 0) / Math.max(periodTaskColumns, 1);
+                      const workshopAvg = periodData.workshops.slice(0, periodWorkshopColumns).reduce((a, b) => a + (b || 0), 0) / Math.max(periodWorkshopColumns, 1);
+                      const { definitive, performance } = calculateRow(periodData, periodTaskColumns, periodWorkshopColumns);
 
                       return (
-                        <tr key={`avg-${row.studentId}`} className="border-b hover:bg-neutral-50 group">
-                          <td className="p-2 border-r font-medium text-neutral-700 sticky left-0 bg-white group-hover:bg-neutral-50 z-10 whitespace-nowrap">{student?.name || 'Unknown'}</td>
-                          <td className={`p-2 text-center font-semibold`}>{taskAvg.toFixed(1)}</td>
-                          <td className={`p-2 text-center font-semibold`}>{workshopAvg.toFixed(1)}</td>
-                          <td className={`p-2 text-center font-semibold`}>{(periodData.attitude ?? 0).toFixed(1)}</td>
-                          <td className={`p-2 text-center font-semibold`}>{(periodData.exam ?? 0).toFixed(1)}</td>
-                          <td className={`p-2 text-center font-bold ${definitive < 6.0 ? 'text-red-600' : 'text-neutral-800'}`}>{definitive.toFixed(1)}</td>
-                          <td className="p-2 text-center"><span className={`px-2 py-1 rounded text-xs font-bold ${getPerformanceColor(performance)}`}>{performance}</span></td>
-                        </tr>
+                        <TableRow key={`avg-${row.studentId}`}>
+                          <TableCell className="border-r font-medium sticky left-0 bg-white z-10 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)]">{student?.name || 'Unknown'}</TableCell>
+                          <TableCell className="text-center border-r font-semibold">{taskAvg.toFixed(1)}</TableCell>
+                          <TableCell className="text-center border-r font-semibold">{workshopAvg.toFixed(1)}</TableCell>
+                          <TableCell className="text-center border-r font-semibold">{(periodData.attitude ?? 0).toFixed(1)}</TableCell>
+                          <TableCell className="text-center border-r font-semibold">{(periodData.exam ?? 0).toFixed(1)}</TableCell>
+                          <TableCell className={`text-center border-r font-bold ${definitive < 6.0 ? 'text-red-600' : 'text-neutral-800'}`}>{definitive.toFixed(1)}</TableCell>
+                          <TableCell className="text-center"><span className={`px-2 py-1 rounded text-xs font-bold ${getPerformanceColor(performance)}`}>{performance}</span></TableCell>
+                        </TableRow>
                       );
                     })}
-                  </tbody>
-                </table>
+                  </TableBody>
+                </Table>
             ) : (
-                <table className="w-full text-sm text-left">
-                  <thead className="text-neutral-700 sticky top-0 z-20 bg-white">
-                    <tr className="border-b">
-                      <th className="p-3 font-bold min-w-[200px] sticky left-0 bg-white z-30 align-bottom border-r">Estudiante</th>
-                      <th colSpan={Math.max(1, taskColumns)} className="text-center p-2 font-bold bg-neutral-50">Apuntes/Tareas (20%)</th>
-                      <th colSpan={Math.max(1, workshopColumns)} className="text-center p-2 font-bold bg-neutral-50">Talleres y Exposiciones (20%)</th>
-                      <th className="p-2 text-center w-24 font-bold bg-neutral-50 align-bottom">Actitudinal (20%)</th>
-                      <th className="p-2 text-center w-24 font-bold bg-neutral-50 align-bottom">Evaluación (40%)</th>
-                      <th className="p-2 text-center w-16 font-bold bg-neutral-100 align-bottom">Final</th>
-                      <th className="p-2 text-center w-24 font-bold bg-neutral-100 align-bottom">Desempeño</th>
-                    </tr>
-                    <tr className="border-b">
-                      <th className="sticky left-0 bg-white z-10 p-1 border-r"></th>
-                      {currentTaskActivities.length > 0 ? (
-                        currentTaskActivities.map((activity, i) => (
-                          <th key={`th-t-${i}`} className="p-2 text-center min-w-[140px] text-xs font-medium align-top bg-neutral-50">
-                            <div className="flex flex-col items-center justify-center gap-1">
-                              <div className="relative w-full group/edit">
+                <Table>
+                  <TableHeader className="sticky top-0 z-10 bg-neutral-100 shadow-sm">
+                    <TableRow className="bg-neutral-100">
+                      <TableHead className="text-left min-w-[200px] sticky left-0 bg-neutral-100 z-30 border-r shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)]">Estudiante</TableHead>
+                      <TableHead colSpan={Math.max(1, periodTaskColumns)} className="text-center bg-neutral-100 border-r">Apuntes/Tareas</TableHead>
+                      <TableHead colSpan={Math.max(1, periodWorkshopColumns)} className="text-center bg-neutral-100 border-r">Talleres y Exposiciones</TableHead>
+                      <TableHead className="text-center w-24 bg-neutral-100 border-r">Actitudinal</TableHead>
+                      <TableHead className="text-center w-24 bg-neutral-100 border-r">Evaluación</TableHead>
+                      <TableHead className="text-center w-16 bg-neutral-100 border-r">Final</TableHead>
+                      <TableHead className="text-center w-24 bg-neutral-100">Desempeño</TableHead>
+                    </TableRow>
+                    <TableRow className="bg-neutral-100">
+                      <TableHead className="sticky left-0 bg-neutral-100 z-30 border-r shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)]"></TableHead>
+                      {periodTaskActivities.length > 0 ? (
+                        periodTaskActivities.map((activity, i) => {
+                          const isLast = i === periodTaskActivities.length - 1;
+                          return (
+                            <TableHead key={`th-t-${i}`} className="text-center min-w-[140px] text-xs align-top bg-neutral-100 border-r relative">
+                              <div className="flex flex-col items-center justify-center gap-1">
+                                <div className="relative w-full group/edit">
+                                  <input
+                                      type="text"
+                                      value={activity.name}
+                                      onChange={(e) => handleActivityChange('tasks', i, 'name', e.target.value)}
+                                      className="w-full font-semibold text-neutral-700 text-center bg-transparent border-b-2 border-transparent p-1 focus:ring-0 focus:outline-none focus:bg-white/50 rounded-none transition-colors duration-200 ease-in-out group-hover/edit:border-neutral-300 focus:border-neutral-400"
+                                      aria-label={`Nombre de la Tarea ${i + 1}`}
+                                  />
+                                  <Edit size={12} className="absolute right-1 top-1/2 -translate-y-1/2 text-neutral-400 group-hover/edit:text-neutral-600 transition-colors pointer-events-none" />
+                                </div>
                                 <input
-                                    type="text"
-                                    value={activity.name}
-                                    onChange={(e) => handleActivityChange('tasks', i, 'name', e.target.value)}
-                                    className="w-full font-semibold text-neutral-700 text-center bg-transparent border-b-2 border-transparent p-1 focus:ring-0 focus:outline-none focus:bg-white/50 rounded-none transition-colors duration-200 ease-in-out group-hover/edit:border-neutral-300 focus:border-neutral-400"
-                                    aria-label={`Nombre de la Tarea ${i + 1}`}
+                                    type="date"
+                                    value={activity.date}
+                                    onChange={(e) => handleActivityChange('tasks', i, 'date', e.target.value)}
+                                    className="w-24 font-normal text-center text-neutral-500 bg-transparent focus:outline-none text-[10px] p-0 border-0"
+                                    aria-label={`Fecha de la Tarea ${i + 1}`}
                                 />
-                                <Edit size={12} className="absolute right-1 top-1/2 -translate-y-1/2 text-neutral-400 group-hover/edit:text-neutral-600 transition-colors pointer-events-none" />
+                                <div className="flex items-center gap-2">
+                                    <span className="text-neutral-400 font-bold text-sm">{i + 1}</span>
+                                    <button 
+                                        onClick={() => setActivityToDelete({ type: 'tasks', index: i })} 
+                                        className="p-1 text-neutral-400 hover:text-red-500 hover:bg-red-100 rounded-full"
+                                        aria-label={`Eliminar tarea ${i + 1}`}
+                                    >
+                                        <Trash2 size={12} />
+                                    </button>
+                                </div>
                               </div>
-                              <input
-                                  type="date"
-                                  value={activity.date}
-                                  onChange={(e) => handleActivityChange('tasks', i, 'date', e.target.value)}
-                                  className="w-24 font-normal text-center text-neutral-500 bg-transparent focus:outline-none text-[10px] p-0 border-0"
-                                  aria-label={`Fecha de la Tarea ${i + 1}`}
-                              />
-                              <div className="flex items-center gap-2">
-                                  <span className="text-neutral-400 font-bold text-sm">{i + 1}</span>
-                                  <button 
-                                      onClick={() => setActivityToDelete({ type: 'tasks', index: i })} 
-                                      className="p-1 text-neutral-400 hover:text-red-500 hover:bg-red-100 rounded-full"
-                                      aria-label={`Eliminar tarea ${i + 1}`}
-                                  >
-                                      <Trash2 size={12} />
-                                  </button>
-                              </div>
-                            </div>
-                          </th>
-                        ))
+                              {isLast && (
+                                <button 
+                                  onClick={() => openAddModal('tasks')}
+                                  className="absolute -right-[9px] top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-800 transition-colors z-20"
+                                  aria-label="Agregar nueva tarea"
+                                  title="Agregar actividad"
+                                >
+                                  <PlusCircle size={18} />
+                                </button>
+                              )}
+                            </TableHead>
+                          );
+                        })
                       ) : (
-                        <th className="p-2 text-center text-xs font-medium bg-neutral-50 text-neutral-500 italic">Agregue una actividad</th>
+                        <TableHead className="text-center text-xs bg-neutral-100 border-r">
+                          <button 
+                            onClick={() => openAddModal('tasks')}
+                            className="flex flex-col items-center justify-center gap-2 w-full py-3 group"
+                          >
+                            <PlusCircle size={20} className="text-neutral-400 group-hover:text-neutral-800 transition-colors" />
+                            <span className="italic text-xs text-neutral-500">Agregue una actividad</span>
+                          </button>
+                        </TableHead>
                       )}
-                      {currentWorkshopActivities.length > 0 ? (
-                        currentWorkshopActivities.map((activity, i) => (
-                          <th key={`th-w-${i}`} className="p-2 text-center min-w-[140px] text-xs font-medium align-top bg-neutral-50">
-                            <div className="flex flex-col items-center justify-center gap-1">
-                              <div className="relative w-full group/edit">
+                      {periodWorkshopActivities.length > 0 ? (
+                        periodWorkshopActivities.map((activity, i) => {
+                          const isLast = i === periodWorkshopActivities.length - 1;
+                          return (
+                            <TableHead key={`th-w-${i}`} className="text-center min-w-[140px] text-xs align-top bg-neutral-100 border-r relative">
+                              <div className="flex flex-col items-center justify-center gap-1">
+                                <div className="relative w-full group/edit">
+                                  <input
+                                      type="text"
+                                      value={activity.name}
+                                      onChange={(e) => handleActivityChange('workshops', i, 'name', e.target.value)}
+                                      className="w-full font-semibold text-neutral-700 text-center bg-transparent border-b-2 border-transparent p-1 focus:ring-0 focus:outline-none focus:bg-white/50 rounded-none transition-colors duration-200 ease-in-out group-hover/edit:border-neutral-300 focus:border-neutral-400"
+                                      aria-label={`Nombre del Taller ${i + 1}`}
+                                  />
+                                  <Edit size={12} className="absolute right-1 top-1/2 -translate-y-1/2 text-neutral-400 group-hover/edit:text-neutral-600 transition-colors pointer-events-none" />
+                                </div>
                                 <input
-                                    type="text"
-                                    value={activity.name}
-                                    onChange={(e) => handleActivityChange('workshops', i, 'name', e.target.value)}
-                                    className="w-full font-semibold text-neutral-700 text-center bg-transparent border-b-2 border-transparent p-1 focus:ring-0 focus:outline-none focus:bg-white/50 rounded-none transition-colors duration-200 ease-in-out group-hover/edit:border-neutral-300 focus:border-neutral-400"
-                                    aria-label={`Nombre del Taller ${i + 1}`}
+                                    type="date"
+                                    value={activity.date}
+                                    onChange={(e) => handleActivityChange('workshops', i, 'date', e.target.value)}
+                                    className="w-24 font-normal text-center text-neutral-500 bg-transparent focus:outline-none text-[10px] p-0 border-0"
+                                    aria-label={`Fecha del Taller ${i + 1}`}
                                 />
-                                <Edit size={12} className="absolute right-1 top-1/2 -translate-y-1/2 text-neutral-400 group-hover/edit:text-neutral-600 transition-colors pointer-events-none" />
+                                <div className="flex items-center gap-2">
+                                    <span className="text-neutral-400 font-bold text-sm">{i + 1}</span>
+                                    <button 
+                                        onClick={() => setActivityToDelete({ type: 'workshops', index: i })} 
+                                        className="p-1 text-neutral-400 hover:text-red-500 hover:bg-red-100 rounded-full"
+                                        aria-label={`Eliminar taller ${i + 1}`}
+                                    >
+                                        <Trash2 size={12} />
+                                    </button>
+                                </div>
                               </div>
-                              <input
-                                  type="date"
-                                  value={activity.date}
-                                  onChange={(e) => handleActivityChange('workshops', i, 'date', e.target.value)}
-                                  className="w-24 font-normal text-center text-neutral-500 bg-transparent focus:outline-none text-[10px] p-0 border-0"
-                                  aria-label={`Fecha del Taller ${i + 1}`}
-                              />
-                              <div className="flex items-center gap-2">
-                                  <span className="text-neutral-400 font-bold text-sm">{i + 1}</span>
-                                  <button 
-                                      onClick={() => setActivityToDelete({ type: 'workshops', index: i })} 
-                                      className="p-1 text-neutral-400 hover:text-red-500 hover:bg-red-100 rounded-full"
-                                      aria-label={`Eliminar taller ${i + 1}`}
-                                  >
-                                      <Trash2 size={12} />
-                                  </button>
-                              </div>
-                            </div>
-                          </th>
-                        ))
+                              {isLast && (
+                                <button 
+                                  onClick={() => openAddModal('workshops')}
+                                  className="absolute -right-[9px] top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-800 transition-colors z-20"
+                                  aria-label="Agregar nuevo taller"
+                                  title="Agregar actividad"
+                                >
+                                  <PlusCircle size={18} />
+                                </button>
+                              )}
+                            </TableHead>
+                          );
+                        })
                       ) : (
-                        <th className="p-2 text-center text-xs font-medium bg-neutral-50 text-neutral-500 italic">Agregue una actividad</th>
+                        <TableHead className="text-center text-xs bg-neutral-100 border-r">
+                          <button 
+                            onClick={() => openAddModal('workshops')}
+                            className="flex flex-col items-center justify-center gap-2 w-full py-3 group"
+                          >
+                            <PlusCircle size={20} className="text-neutral-400 group-hover:text-neutral-800 transition-colors" />
+                            <span className="italic text-xs text-neutral-500">Agregue una actividad</span>
+                          </button>
+                        </TableHead>
                       )}
-                      <th className="bg-neutral-50"></th>
-                      <th className="bg-neutral-50"></th>
-                      <th className="bg-neutral-100"></th>
-                      <th className="bg-neutral-100"></th>
-                    </tr>
-                  </thead>
-                  <tbody>
+                      <TableHead className="bg-neutral-100 border-r"></TableHead>
+                      <TableHead className="bg-neutral-100 border-r"></TableHead>
+                      <TableHead className="bg-neutral-100 border-r"></TableHead>
+                      <TableHead className="bg-neutral-100"></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
                     {localData.map((row) => (
                       <GradeBookRow 
                         key={row.studentId}
                         studentId={row.studentId}
-                        periodData={row.periods[currentPeriod as number] || createEmptyPeriodData()}
+                        periodData={row.periods[period] || createEmptyPeriodData()}
                         student={students.find(s => s.id === row.studentId)}
-                        taskColumns={taskColumns}
-                        workshopColumns={workshopColumns}
+                        taskColumns={periodTaskColumns}
+                        workshopColumns={periodWorkshopColumns}
                         calculateRow={calculateRow}
                         getPerformanceColor={getPerformanceColor}
                         updateGrade={updateGrade}
@@ -855,9 +935,20 @@ export const GradeBook: React.FC<GradeBookProps> = ({ students, data, taskActivi
                         handleKeyDown={handleKeyDown}
                       />
                     ))}
-                  </tbody>
-                </table>
+                  </TableBody>
+                </Table>
             )}
+            </div>
+            {/* Leyenda de porcentajes */}
+            <div className="mt-4 px-4 py-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <p className="text-sm text-neutral-700 font-medium mb-2">Distribución de calificaciones:</p>
+              <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-neutral-600">
+                <span>• Apuntes/Tareas: <strong>20%</strong></span>
+                <span>• Talleres y Exposiciones: <strong>20%</strong></span>
+                <span>• Actitudinal: <strong>20%</strong></span>
+                <span>• Evaluación: <strong>40%</strong></span>
+              </div>
+            </div>
           </div>
           
           {/* Mobile Card View */}
@@ -866,10 +957,10 @@ export const GradeBook: React.FC<GradeBookProps> = ({ students, data, taskActivi
                 <GradeBookCard
                   key={`card-${row.studentId}`}
                   studentId={row.studentId}
-                  periodData={row.periods[currentPeriod as number] || createEmptyPeriodData()}
+                  periodData={row.periods[period] || createEmptyPeriodData()}
                   student={students.find(s => s.id === row.studentId)}
-                  taskActivities={currentTaskActivities}
-                  workshopActivities={currentWorkshopActivities}
+                  taskActivities={periodTaskActivities}
+                  workshopActivities={periodWorkshopActivities}
                   calculateRow={calculateRow}
                   getPerformanceColor={getPerformanceColor}
                   updateGrade={updateGrade}
@@ -877,39 +968,44 @@ export const GradeBook: React.FC<GradeBookProps> = ({ students, data, taskActivi
                 />
              ))}
           </div>
-        </>
-      ) : (
-        <>
+            </TabsContent>
+          );
+        })}
+
+        {/* Resumen Tab Content */}
+        <TabsContent value="Resumen" className="!m-0 !p-0" style={{ display: 'block' }}>
           {/* Desktop Final Summary View */}
-          <div className="flex-1 overflow-auto custom-scrollbar hidden md:block">
-            <table className="w-full text-sm text-left">
-               <thead className="bg-neutral-100 text-neutral-700 font-semibold sticky top-0 z-20">
-                  <tr className="border-b">
-                    <th className="p-2 text-left min-w-[200px]">Estudiante</th>
+          <div className="hidden md:block p-4">
+            <div className="w-full overflow-x-auto custom-scrollbar">
+            <Table className="w-full">
+               <TableHeader className="bg-neutral-100 sticky top-0 z-10 shadow-sm before:content-[''] before:absolute before:inset-0 before:bg-neutral-100 before:-z-10">
+                  <TableRow className="bg-neutral-100">
+                    <TableHead className="text-left min-w-[200px] bg-neutral-100">Estudiante</TableHead>
                     {periods.map(p => (
-                      <th key={p} className="p-2 text-center w-28">Periodo {p} ({academicSettings.periodWeights[p]}%)</th>
+                      <TableHead key={p} className="text-center w-28 bg-neutral-100">Periodo {p} ({academicSettings.periodWeights[p]}%)</TableHead>
                     ))}
-                    <th className="p-2 text-center w-28">Nota Final Ponderada</th>
-                    <th className="p-2 text-center w-32">Desempeño Final</th>
-                  </tr>
-                </thead>
-                 <tbody>
+                    <TableHead className="text-center w-28 bg-neutral-100">Nota Final Ponderada</TableHead>
+                    <TableHead className="text-center w-32 bg-neutral-100">Desempeño Final</TableHead>
+                  </TableRow>
+                </TableHeader>
+                 <TableBody>
                   {localData.map(studentData => {
                       const student = students.find(s => s.id === studentData.studentId);
                       const summary = calculateFinalSummary(studentData);
                       return (
-                        <tr key={studentData.studentId} className="hover:bg-neutral-50 border-b">
-                           <td className="p-3 font-medium">{student?.name}</td>
+                        <TableRow key={studentData.studentId}>
+                           <TableCell className="font-medium">{student?.name}</TableCell>
                            {periods.map(p => (
-                             <td key={p} className={`p-3 text-center font-semibold ${summary[p] < 6.0 ? 'text-red-600' : ''}`}>{summary[p].toFixed(1)}</td>
+                             <TableCell key={p} className={`text-center font-semibold ${summary[p] < 6.0 ? 'text-red-600' : ''}`}>{summary[p].toFixed(1)}</TableCell>
                            ))}
-                           <td className={`p-3 text-center font-bold ${summary.weightedFinal < 6.0 ? 'text-red-600' : 'text-neutral-800'}`}>{summary.weightedFinal.toFixed(2)}</td>
-                           <td className="p-3 text-center"><span className={`px-2 py-1 rounded text-xs font-bold ${getPerformanceColor(summary.performance)}`}>{summary.performance}</span></td>
-                        </tr>
+                           <TableCell className={`text-center font-bold ${summary.weightedFinal < 6.0 ? 'text-red-600' : 'text-neutral-800'}`}>{summary.weightedFinal.toFixed(2)}</TableCell>
+                           <TableCell className="text-center"><span className={`px-2 py-1 rounded text-xs font-bold ${getPerformanceColor(summary.performance)}`}>{summary.performance}</span></TableCell>
+                        </TableRow>
                       );
                   })}
-                 </tbody>
-            </table>
+                 </TableBody>
+            </Table>
+            </div>
           </div>
           {/* Mobile Final Summary View */}
           <div className="flex-1 overflow-auto custom-scrollbar md:hidden p-4 space-y-3">
@@ -937,9 +1033,9 @@ export const GradeBook: React.FC<GradeBookProps> = ({ students, data, taskActivi
                  );
              })}
           </div>
-        </>
-      )}
+        </TabsContent>
 
+      </Tabs>
     </div>
   );
 };

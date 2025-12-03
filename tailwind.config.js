@@ -49,7 +49,8 @@ export default {
         sm: "calc(var(--radius) - 4px)",
       },
       fontFamily: {
-        sans: ["Inter", "sans-serif"],
+        sans: ["'Geist Sans'", "system-ui", "sans-serif"],
+        mono: ["'Geist Mono'", "monospace"],
       },
       keyframes: {
         "fade-in-up": {
@@ -62,11 +63,21 @@ export default {
             transform: 'translateY(0) scale(1)',
           },
         },
+        "accordion-down": {
+          from: { height: "0" },
+          to: { height: "var(--radix-accordion-content-height)" },
+        },
+        "accordion-up": {
+          from: { height: "var(--radix-accordion-content-height)" },
+          to: { height: "0" },
+        },
       },
       animation: {
         "fade-in-up": 'fade-in-up 0.3s ease-out forwards',
+        "accordion-down": "accordion-down 0.2s ease-out",
+        "accordion-up": "accordion-up 0.2s ease-out",
       },
     },
   },
-  plugins: [],
+  plugins: [require("tailwindcss-animate")],
 };

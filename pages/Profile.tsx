@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
-import { User } from '../types';
+import { User, UserRole } from '../types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
-import { avatars, getAvatarById, Avatar } from '../lib/avatars';
+import { getAvatarForUser } from '../lib/avatars';
 import { db } from '../services/db';
 import { useToast } from '../components/Toast';
-import { Loader2, Check } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 
 interface ProfileProps {
   currentUser: User;
@@ -15,22 +15,22 @@ interface ProfileProps {
 }
 
 export function Profile({ currentUser, onUpdateUser }: ProfileProps) {
-  const [selectedAvatar, setSelectedAvatar] = useState<string>(currentUser.avatar || avatars[0].id);
+  const [gender, setGender] = useState<'male' | 'female'>(currentUser.gender || 'male');
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const { addToast } = useToast();
 
-  const handleAvatarChange = async (avatarId: string) => {
-    setSelectedAvatar(avatarId);
+  const handleGenderChange = async (newGender: 'male' | 'female') => {
+    setGender(newGender);
     try {
-      await db.updateUserAvatar(currentUser.id, avatarId);
-      onUpdateUser({ ...currentUser, avatar: avatarId });
-      addToast('Avatar actualizado correctamente', 'success');
+      await db.updateUserGender(currentUser.id, newGender);
+      onUpdateUser({ ...currentUser, gender: newGender });
+      addToast('Género actualizado correctamente', 'success');
     } catch (error) {
       console.error(error);
-      addToast('Error al actualizar el avatar', 'error');
+      addToast('Error al actualizar el género', 'error');
     }
   };
 
@@ -49,7 +49,7 @@ export function Profile({ currentUser, onUpdateUser }: ProfileProps) {
 
     setLoading(true);
     try {
-      await db.changePassword(currentUser.id, currentPassword, newPassword);
+      await db.updateUserPassword(currentUser.id, currentPassword, newPassword);
       addToast('Contraseña actualizada correctamente', 'success');
       setCurrentPassword('');
       setNewPassword('');
@@ -62,10 +62,11 @@ export function Profile({ currentUser, onUpdateUser }: ProfileProps) {
     }
   };
 
-  const selectedAvatarData = getAvatarById(selectedAvatar);
+  const userAvatar = getAvatarForUser(currentUser.role, gender);
+  const isSuperAdmin = currentUser.role === UserRole.SUPER_ADMIN;
 
   return (
-    <div className="space-y-6">
+    <div className="flex-1 overflow-auto space-y-6">
       <div>
         <h2 className="text-2xl font-bold mb-2">Mi Perfil</h2>
         <p className="text-gray-500">Personaliza tu cuenta y configuración</p>
@@ -79,45 +80,63 @@ export function Profile({ currentUser, onUpdateUser }: ProfileProps) {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center gap-4">
-            <div className={`flex h-20 w-20 items-center justify-center rounded-full text-3xl ${selectedAvatarData?.background || 'bg-gray-300'}`}>
-              {selectedAvatarData?.type === 'emoji' ? selectedAvatarData.value : currentUser.name[0].toUpperCase()}
+            <div className={`flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-lg ${userAvatar.background}`}>
+              <img src={userAvatar.imageUrl} alt="Avatar" className="h-full w-full object-cover" />
             </div>
-            <div>
-              <p className="text-lg font-semibold">{currentUser.name}</p>
-              <p className="text-sm text-gray-500">{currentUser.email}</p>
+            <div className="min-w-0 flex-1">
+              <p className="text-lg font-semibold truncate">{currentUser.name}</p>
               <p className="text-sm text-gray-500 capitalize">{currentUser.role.replace('_', ' ')}</p>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Selección de Avatar */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Elige tu Avatar</CardTitle>
-          <CardDescription>Selecciona un avatar para personalizar tu perfil</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-6 sm:grid-cols-8 md:grid-cols-10 lg:grid-cols-12 gap-3">
-            {avatars.map((avatar) => (
-              <button
-                key={avatar.id}
-                onClick={() => handleAvatarChange(avatar.id)}
-                className={`relative flex h-14 w-14 items-center justify-center rounded-full text-2xl transition-all hover:scale-110 ${avatar.background} ${
-                  selectedAvatar === avatar.id ? 'ring-4 ring-primary ring-offset-2' : ''
-                }`}
-              >
-                {avatar.type === 'emoji' && avatar.value}
-                {selectedAvatar === avatar.id && (
-                  <div className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-white">
-                    <Check className="h-3 w-3" />
+      {/* Selección de Género (solo si no es Super Admin) */}
+      {!isSuperAdmin && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Avatar del Perfil</CardTitle>
+            <CardDescription>Tu avatar se asigna automáticamente según tu género</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              <Label>Género</Label>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => handleGenderChange('male')}
+                  className={`flex flex-col items-center gap-2 p-3 rounded-lg border-2 transition-all hover:scale-105 ${
+                    gender === 'male' ? 'border-primary bg-primary/5' : 'border-gray-200'
+                  }`}
+                >
+                  <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-md bg-blue-400">
+                    <img 
+                      src={getAvatarForUser(UserRole.DOCENTE, 'male').imageUrl} 
+                      alt="Avatar Masculino" 
+                      className="h-full w-full object-cover" 
+                    />
                   </div>
-                )}
-              </button>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+                  <span className="text-xs font-medium">Masculino</span>
+                </button>
+                <button
+                  onClick={() => handleGenderChange('female')}
+                  className={`flex flex-col items-center gap-2 p-3 rounded-lg border-2 transition-all hover:scale-105 ${
+                    gender === 'female' ? 'border-primary bg-primary/5' : 'border-gray-200'
+                  }`}
+                >
+                  <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-md bg-pink-400">
+                    <img 
+                      src={getAvatarForUser(UserRole.DOCENTE, 'female').imageUrl} 
+                      alt="Avatar Femenino" 
+                      className="h-full w-full object-cover" 
+                    />
+                  </div>
+                  <span className="text-xs font-medium">Femenino</span>
+                </button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Cambiar Contraseña */}
       <Card>

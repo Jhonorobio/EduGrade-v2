@@ -1,27 +1,57 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { db } from '../services/db';
 import { Student, GradeLevel } from '../types';
-import { ArrowLeft, Plus, Edit, Trash2, X, Loader2, Users, Upload, Download, PlusCircle, ArrowUp, ArrowDown, ChevronsUpDown } from 'lucide-react';
+import { ArrowLeft, Edit, Trash2, Loader2, Users, Upload, Download, PlusCircle, ArrowUp, ArrowDown, ChevronsUpDown } from 'lucide-react';
 import { ConfirmationModal } from './ConfirmationModal';
 import { useToast } from './Toast';
+import { Button } from './ui/button';
+import { Input } from './ui/input';
+import { Label } from './ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from './ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from './ui/dialog';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from './ui/table';
+import { Card, CardContent } from './ui/card';
 
 interface StudentManagementProps {}
 
 const StudentFormModal: React.FC<{
   student: Student | null;
+  open: boolean;
   gradeLevels: GradeLevel[];
   onSave: (student: Partial<Student>) => void;
   onCancel: () => void;
   defaultGradeId?: string | null;
-}> = ({ student, gradeLevels, onSave, onCancel, defaultGradeId }) => {
+}> = ({ student, open, gradeLevels, onSave, onCancel, defaultGradeId }) => {
   const [formData, setFormData] = useState<Partial<Student>>({
     name: student?.name || '',
     gradeLevelId: student?.gradeLevelId || defaultGradeId || null,
   });
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
+  useEffect(() => {
+    setFormData({
+      name: student?.name || '',
+      gradeLevelId: student?.gradeLevelId || defaultGradeId || null,
+    });
+  }, [student, defaultGradeId]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,35 +61,48 @@ const StudentFormModal: React.FC<{
   const isEditing = !!student;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
-        <div className="p-4 border-b flex justify-between items-center">
-          <h3 className="text-lg font-bold">{isEditing ? 'Editar Alumno' : 'Nuevo Alumno'}</h3>
-          <button onClick={onCancel} className="p-1 hover:bg-slate-200 rounded-full"><X size={20} /></button>
-        </div>
+    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onCancel()}>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>{isEditing ? 'Editar Alumno' : 'Nuevo Alumno'}</DialogTitle>
+        </DialogHeader>
         <form onSubmit={handleSubmit}>
-          <div className="p-6 space-y-4">
-            <div>
-              <label className="text-sm font-medium text-slate-600">Nombre Completo del Alumno</label>
-              <input type="text" name="name" value={formData.name} onChange={handleChange} className="mt-1 w-full p-2 border rounded" required />
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">Nombre Completo del Alumno</Label>
+              <Input
+                id="name"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                required
+              />
             </div>
-            <div>
-              <label className="text-sm font-medium text-slate-600">Grado Asignado</label>
-              <select name="gradeLevelId" value={formData.gradeLevelId ?? ''} onChange={handleChange} className="mt-1 w-full p-2 border rounded bg-white" required>
-                <option value="" disabled>Seleccione un grado...</option>
-                {gradeLevels.map(gl => (
-                  <option key={gl.id} value={gl.id}>{gl.name}</option>
-                ))}
-              </select>
+            <div className="space-y-2">
+              <Label htmlFor="gradeLevel">Grado Asignado</Label>
+              <Select
+                value={formData.gradeLevelId || ''}
+                onValueChange={(value) => setFormData({ ...formData, gradeLevelId: value })}
+              >
+                <SelectTrigger id="gradeLevel" className="w-full">
+                  <SelectValue placeholder="Seleccione un grado..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {gradeLevels.map(gl => (
+                    <SelectItem key={gl.id} value={gl.id}>{gl.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
-          <div className="p-4 bg-slate-50 flex justify-end gap-2">
-            <button type="button" onClick={onCancel} className="px-4 py-2 bg-slate-200 rounded">Cancelar</button>
-            <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded">Guardar</button>
-          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={onCancel}>
+              Cancelar
+            </Button>
+            <Button type="submit">Guardar</Button>
+          </DialogFooter>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 };
 
@@ -203,30 +246,25 @@ export const StudentManagement: React.FC<StudentManagementProps> = () => {
       const nameParts = student.name.split(' ').filter(Boolean);
       let firstName1 = '', firstName2 = '', lastName1 = '', lastName2 = '';
 
-      // Heuristic to parse names based on common Spanish naming conventions
       switch (nameParts.length) {
         case 1:
-          // Ambiguous, assume it's a first name
           firstName1 = nameParts[0];
           break;
         case 2:
-          // Common case: PrimerNombre PrimerApellido
           firstName1 = nameParts[0];
           lastName1 = nameParts[1];
           break;
         case 3:
-          // Common case: PrimerNombre PrimerApellido SegundoApellido
           firstName1 = nameParts[0];
           lastName1 = nameParts[1];
           lastName2 = nameParts[2];
           break;
         case 4:
         default:
-           // Common case: PrimerNombre SegundoNombre PrimerApellido SegundoApellido
           firstName1 = nameParts[0];
           firstName2 = nameParts[1];
           lastName1 = nameParts[2];
-          lastName2 = nameParts.slice(3).join(' '); // Handle more than 4 parts
+          lastName2 = nameParts.slice(3).join(' ');
           break;
       }
 
@@ -265,11 +303,8 @@ export const StudentManagement: React.FC<StudentManagementProps> = () => {
           return;
         }
 
-        // Attempt to decode with UTF-8 first
         let text = new TextDecoder('utf-8').decode(buffer);
 
-        // If UTF-8 decoding results in replacement characters (�), try windows-1252
-        // This is a common issue with CSVs saved from Excel on Windows
         if (text.includes('�')) {
           try {
             text = new TextDecoder('windows-1252').decode(buffer);
@@ -377,13 +412,23 @@ export const StudentManagement: React.FC<StudentManagementProps> = () => {
         <div className="p-4 border-b flex flex-col sm:flex-row items-start sm:items-center justify-between bg-white rounded-t-lg gap-2">
           <h2 className="text-lg font-bold text-slate-800">Gestión de Alumnos por Grado</h2>
           <div className="flex gap-2 w-full sm:w-auto">
-            <button onClick={() => { setImportGradeId(null); fileInputRef.current?.click(); }} disabled={isProcessing || loading} className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-3 py-2 bg-white text-slate-700 border border-slate-300 rounded-md hover:bg-slate-100 transition-colors font-medium text-sm">
+            <Button 
+              onClick={() => { setImportGradeId(null); fileInputRef.current?.click(); }} 
+              disabled={isProcessing || loading}
+              variant="outline"
+              className="flex-1 sm:flex-none gap-2"
+            >
               {isProcessing && !importGradeId ? <Loader2 size={16} className="animate-spin"/> : <Upload size={16} />}
               Importar (Todos)
-            </button>
-            <button onClick={() => handleExport(allStudents, 'todos_los_alumnos.csv')} disabled={isProcessing || loading || allStudents.length === 0} className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-3 py-2 bg-white text-slate-700 border border-slate-300 rounded-md hover:bg-slate-100 transition-colors font-medium text-sm disabled:opacity-50">
+            </Button>
+            <Button 
+              onClick={() => handleExport(allStudents, 'todos_los_alumnos.csv')} 
+              disabled={isProcessing || loading || allStudents.length === 0}
+              variant="outline"
+              className="flex-1 sm:flex-none gap-2"
+            >
               <Download size={16} /> Exportar (Todos)
-            </button>
+            </Button>
           </div>
         </div>
         
@@ -395,16 +440,22 @@ export const StudentManagement: React.FC<StudentManagementProps> = () => {
               {gradeLevels.filter(gl => gl.isEnabled).map(grade => {
                 const studentCount = allStudents.filter(s => s.gradeLevelId === grade.id).length;
                 return (
-                  <div key={grade.id} onClick={() => setSelectedGrade(grade)} className="bg-slate-50 border rounded-lg p-4 cursor-pointer hover:bg-indigo-50 hover:border-indigo-500 transition-colors group">
-                    <div className="flex justify-between items-center">
-                       <h3 className="font-bold text-slate-700 text-lg">{grade.name}</h3>
-                       <div className="flex items-center gap-2 text-slate-500">
-                         <Users size={16} />
-                         <span className="font-semibold">{studentCount}</span>
-                       </div>
-                    </div>
-                    <p className="text-xs text-slate-400 mt-2">Gestionar alumnos de este grado</p>
-                  </div>
+                  <Card 
+                    key={grade.id} 
+                    onClick={() => setSelectedGrade(grade)} 
+                    className="cursor-pointer hover:bg-indigo-50 hover:border-indigo-500 transition-colors"
+                  >
+                    <CardContent className="p-4">
+                      <div className="flex justify-between items-center">
+                        <h3 className="font-bold text-slate-700 text-lg">{grade.name}</h3>
+                        <div className="flex items-center gap-2 text-slate-500">
+                          <Users size={16} />
+                          <span className="font-semibold">{studentCount}</span>
+                        </div>
+                      </div>
+                      <p className="text-xs text-slate-400 mt-2">Gestionar alumnos de este grado</p>
+                    </CardContent>
+                  </Card>
                 )
               })}
             </div>
@@ -417,15 +468,14 @@ export const StudentManagement: React.FC<StudentManagementProps> = () => {
   return (
     <div className="h-full flex flex-col">
        <input type="file" ref={fileInputRef} onChange={handleFileSelect} accept=".csv" className="hidden" />
-      {isModalOpen && (
-        <StudentFormModal 
-          student={editingStudent}
-          gradeLevels={gradeLevels.filter(gl => gl.isEnabled)}
-          onSave={handleSaveStudent}
-          onCancel={() => { setIsModalOpen(false); setEditingStudent(null); }}
-          defaultGradeId={selectedGrade.id}
-        />
-      )}
+      <StudentFormModal 
+        student={editingStudent}
+        open={isModalOpen}
+        gradeLevels={gradeLevels.filter(gl => gl.isEnabled)}
+        onSave={handleSaveStudent}
+        onCancel={() => { setIsModalOpen(false); setEditingStudent(null); }}
+        defaultGradeId={selectedGrade.id}
+      />
       <ConfirmationModal
         isOpen={!!studentToDelete || !!actionToDelete}
         onConfirm={studentToDelete ? confirmDeleteStudent : handleConfirmMassDelete}
@@ -436,22 +486,36 @@ export const StudentManagement: React.FC<StudentManagementProps> = () => {
 
       <div className="p-4 border-b flex flex-col sm:flex-row items-start sm:items-center justify-between bg-white rounded-t-lg gap-2">
         <div className="flex items-center gap-3">
-          <button onClick={() => setSelectedGrade(null)} className="p-2 hover:bg-slate-100 rounded-full text-slate-600">
+          <Button onClick={() => setSelectedGrade(null)} variant="ghost" size="icon">
             <ArrowLeft size={20} />
-          </button>
+          </Button>
           <h2 className="text-lg font-bold text-slate-800">Alumnos en: {selectedGrade.name}</h2>
         </div>
         <div className="flex gap-2 w-full sm:w-auto">
-            <button onClick={() => { setEditingStudent(null); setIsModalOpen(true); }} className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-3 py-2 bg-white text-slate-700 border border-slate-300 rounded-md hover:bg-slate-100 transition-colors font-medium text-sm">
+            <Button 
+              onClick={() => { setEditingStudent(null); setIsModalOpen(true); }}
+              variant="outline"
+              className="flex-1 sm:flex-none gap-2"
+            >
               <PlusCircle size={16} /> Nuevo Alumno
-            </button>
-            <button onClick={() => { setImportGradeId(selectedGrade.id); fileInputRef.current?.click(); }} disabled={isProcessing || loading} className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-3 py-2 bg-white text-slate-700 border border-slate-300 rounded-md hover:bg-slate-100 transition-colors font-medium text-sm">
+            </Button>
+            <Button 
+              onClick={() => { setImportGradeId(selectedGrade.id); fileInputRef.current?.click(); }} 
+              disabled={isProcessing || loading}
+              variant="outline"
+              className="flex-1 sm:flex-none gap-2"
+            >
               {isProcessing && importGradeId ? <Loader2 size={16} className="animate-spin"/> : <Upload size={16} />}
               Importar
-            </button>
-            <button onClick={() => handleExport(studentsInSelectedGrade, `alumnos_${selectedGrade.name.replace(/ /g, '_')}.csv`)} disabled={isProcessing || loading || studentsInSelectedGrade.length === 0} className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-3 py-2 bg-white text-slate-700 border border-slate-300 rounded-md hover:bg-slate-100 transition-colors font-medium text-sm disabled:opacity-50">
+            </Button>
+            <Button 
+              onClick={() => handleExport(studentsInSelectedGrade, `alumnos_${selectedGrade.name.replace(/ /g, '_')}.csv`)} 
+              disabled={isProcessing || loading || studentsInSelectedGrade.length === 0}
+              variant="outline"
+              className="flex-1 sm:flex-none gap-2"
+            >
                <Download size={16} /> Exportar
-            </button>
+            </Button>
         </div>
       </div>
 
@@ -459,31 +523,48 @@ export const StudentManagement: React.FC<StudentManagementProps> = () => {
         {loading ? (
             <div className="h-64 flex items-center justify-center"><Loader2 className="animate-spin text-indigo-600" size={48} /></div>
         ) : (
-          <table className="w-full text-sm">
-            <thead className="bg-slate-100 text-slate-600 sticky top-0">
-              <tr>
-                <th className="p-3 text-left font-bold">
-                   <button onClick={() => requestSort('name')} className="flex items-center hover:text-slate-900">
+          <Table>
+            <TableHeader className="bg-slate-100 sticky top-0">
+              <TableRow>
+                <TableHead>
+                  <Button 
+                    variant="ghost" 
+                    onClick={() => requestSort('name')} 
+                    className="flex items-center gap-1 h-auto p-0 hover:bg-transparent font-bold"
+                  >
                     Nombre del Alumno {getSortIcon('name')}
-                  </button>
-                </th>
-                <th className="p-3 text-center font-bold">Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
+                  </Button>
+                </TableHead>
+                <TableHead className="text-center">Acciones</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {sortedStudentsInGrade.map(student => (
-                <tr key={student.id} className="border-b hover:bg-slate-50">
-                  <td className="p-3 font-medium">{student.name}</td>
-                  <td className="p-3 text-center">
+                <TableRow key={student.id}>
+                  <TableCell className="font-medium">{student.name}</TableCell>
+                  <TableCell className="text-center">
                     <div className="flex justify-center gap-2">
-                      <button onClick={() => { setEditingStudent(student); setIsModalOpen(true); }} className="p-2 hover:bg-slate-200 rounded"><Edit size={16} /></button>
-                      <button onClick={() => handleDeleteStudent(student.id)} className="p-2 text-red-500 hover:bg-red-100 rounded"><Trash2 size={16} /></button>
+                      <Button 
+                        variant="ghost" 
+                        size="icon"
+                        onClick={() => { setEditingStudent(student); setIsModalOpen(true); }}
+                      >
+                        <Edit size={16} />
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="icon"
+                        onClick={() => handleDeleteStudent(student.id)}
+                        className="text-red-500 hover:text-red-600 hover:bg-red-100"
+                      >
+                        <Trash2 size={16} />
+                      </Button>
                     </div>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         )}
       </div>
     </div>

@@ -5,6 +5,10 @@ import { db } from '../services/db';
 import { useToast } from './Toast';
 import { generateDirectorReportPdf } from '../services/pdfService';
 import { generateDirectorObservation } from '../services/geminiService';
+import { Button } from './ui/button';
+import { Textarea } from './ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { Card, CardContent } from './ui/card';
 
 const DirectorReportEditor: React.FC<{ student: Student; gradeLevel: GradeLevel; onBack: () => void; academicSettings: AcademicSettings; }> = ({ student, gradeLevel, onBack, academicSettings }) => {
   const [report, setReport] = useState<ConsolidatedReport | null>(null);
@@ -109,9 +113,9 @@ const DirectorReportEditor: React.FC<{ student: Student; gradeLevel: GradeLevel;
         return (
             <div className="flex-1 flex flex-col items-center justify-center p-4">
                 <p className="text-slate-500 mb-4">No se encontró un informe para este estudiante en el periodo {currentPeriod}.</p>
-                <button onClick={onBack} className="flex items-center gap-2 px-4 py-2 bg-slate-200 text-slate-800 rounded-md hover:bg-slate-300">
+                <Button onClick={onBack} variant="outline" className="gap-2">
                     <ArrowLeft size={16} /> Volver
-                </button>
+                </Button>
             </div>
         );
     }
@@ -120,29 +124,33 @@ const DirectorReportEditor: React.FC<{ student: Student; gradeLevel: GradeLevel;
         <div className="flex-1 flex flex-col h-full bg-white rounded-lg shadow-sm border">
             <div className="p-4 border-b flex items-center justify-between sticky top-0 bg-white z-10">
                 <div className="flex items-center gap-3">
-                    <button onClick={onBack} className="p-2 hover:bg-slate-100 rounded-full text-slate-600">
+                    <Button onClick={onBack} variant="ghost" size="icon">
                         <ArrowLeft size={20} />
-                    </button>
+                    </Button>
                     <div>
                         <h2 className="text-lg font-bold text-slate-800">{student.name}</h2>
                         <p className="text-sm text-slate-500">Grado: {gradeLevel.name}</p>
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
-                    <select
-                        value={currentPeriod}
-                        onChange={(e) => setCurrentPeriod(Number(e.target.value))}
-                        className="p-2 border rounded-md bg-white"
+                    <Select
+                        value={currentPeriod.toString()}
+                        onValueChange={(value) => setCurrentPeriod(Number(value))}
                     >
-                        {periods.map(p => <option key={p} value={p}>Periodo {p}</option>)}
-                    </select>
-                    <button onClick={handleGeneratePdf} className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                        <SelectTrigger className="w-[140px]">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {periods.map(p => <SelectItem key={p} value={p.toString()}>Periodo {p}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
+                    <Button onClick={handleGeneratePdf} className="gap-2">
                         <Download size={16} /> PDF
-                    </button>
-                    <button onClick={handleSave} disabled={saving} className="flex items-center gap-2 px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50">
+                    </Button>
+                    <Button onClick={handleSave} disabled={saving} className="gap-2 bg-green-600 hover:bg-green-700">
                         {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
                         Guardar
-                    </button>
+                    </Button>
                 </div>
             </div>
 
@@ -186,10 +194,12 @@ const DirectorReportEditor: React.FC<{ student: Student; gradeLevel: GradeLevel;
                 <div className="mt-4">
                     <div className="p-2 border border-slate-300 border-b-0 rounded-t-md bg-slate-100 font-semibold text-slate-700 text-center flex justify-center items-center relative">
                         <span>OBSERVACIONES / ACTITUDINAL</span>
-                        <button 
+                        <Button 
                             onClick={handleGenerateDirectorObservation}
                             disabled={isGenerating}
-                            className="absolute right-2 p-1.5 bg-indigo-100 text-indigo-600 rounded-full hover:bg-indigo-200 transition-colors shadow-sm disabled:opacity-50"
+                            size="icon"
+                            variant="ghost"
+                            className="absolute right-2 h-8 w-8 bg-indigo-100 text-indigo-600 hover:bg-indigo-200"
                             title="Generar observación con IA"
                         >
                             {isGenerating ? (
@@ -197,12 +207,12 @@ const DirectorReportEditor: React.FC<{ student: Student; gradeLevel: GradeLevel;
                             ) : (
                                 <Wand2 size={16} />
                             )}
-                        </button>
+                        </Button>
                     </div>
-                    <textarea 
+                    <Textarea 
                         value={report.directorGeneralObservation}
                         onChange={(e) => setReport({ ...report, directorGeneralObservation: e.target.value })}
-                        className="w-full h-32 p-2 border border-slate-300 rounded-b-md resize-y text-sm focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+                        className="w-full h-32 rounded-t-none resize-y"
                         placeholder="Agregue aquí las observaciones generales del estudiante o genere una con IA..."
                     />
                 </div>
@@ -245,16 +255,18 @@ const GroupDirectorDashboard: React.FC<{ gradeLevel: GradeLevel; academicSetting
         <div className="flex-1 overflow-auto custom-scrollbar">
            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 p-4">
               {students.map(student => (
-                 <div 
+                 <Card 
                    key={student.id} 
                    onClick={() => setSelectedStudent(student)}
-                   className="flex flex-col items-center p-4 border rounded-lg cursor-pointer hover:bg-indigo-50 hover:border-indigo-400 transition-colors"
+                   className="cursor-pointer hover:bg-indigo-50 hover:border-indigo-400 transition-colors"
                  >
-                   <div className="w-16 h-16 rounded-full bg-slate-200 flex items-center justify-center mb-2">
-                     <UserIcon className="w-8 h-8 text-slate-500" />
-                   </div>
-                   <p className="text-sm font-medium text-center">{student.name}</p>
-                 </div>
+                   <CardContent className="flex flex-col items-center p-4">
+                     <div className="w-16 h-16 rounded-full bg-slate-200 flex items-center justify-center mb-2">
+                       <UserIcon className="w-8 h-8 text-slate-500" />
+                     </div>
+                     <p className="text-sm font-medium text-center">{student.name}</p>
+                   </CardContent>
+                 </Card>
               ))}
            </div>
         </div>

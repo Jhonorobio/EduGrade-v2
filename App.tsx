@@ -1,49 +1,28 @@
 import React, { useState, useEffect, useCallback, Suspense, lazy } from 'react';
-import { 
-  Loader2,
-  AlertCircle,
-  ArrowUp,
-  ArrowDown
-} from 'lucide-react';
-import { User, UserRole, Assignment, StudentGradeRecord, Activity, GradeLevel, GroupedAssignment, AcademicSettings as AcademicSettingsType } from './types';
+import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
+import { Loader2, AlertCircle } from 'lucide-react';
+import { User, UserRole, Assignment, GradeLevel, GroupedAssignment, AcademicSettings as AcademicSettingsType } from './types';
 import { db } from './services/db';
 import { isSupabaseConfigured } from './services/supabase';
 import { useToast } from './components/Toast';
 import RootLayout from './app/layout';
 import { AppLayout } from './components/AppLayout';
-
-// Shadcn UI components
-import { Button } from './components/ui/button';
+import { ProtectedRoute } from './components/ProtectedRoute';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from './components/ui/card';
-import { Input } from './components/ui/input';
-import { Field, FieldGroup, FieldLabel } from './components/ui/field';
 
-
-// Lazy load components for code splitting
-const GradeBook = lazy(() => import('./components/GradeBook').then(module => ({ default: module.GradeBook })));
-const AcademicReport = lazy(() => import('./components/AcademicReport').then(module => ({ default: module.AcademicReport })));
+// Lazy load components
+const Dashboard = lazy(() => import('./pages/Dashboard').then(module => ({ default: module.Dashboard })));
+const GradeBookPage = lazy(() => import('./pages/GradeBookPage').then(module => ({ default: module.GradeBookPage })));
+const ReportPage = lazy(() => import('./pages/ReportPage').then(module => ({ default: module.ReportPage })));
 const UserManagement = lazy(() => import('./components/UserManagement').then(module => ({ default: module.UserManagement })));
 const AssignmentManagement = lazy(() => import('./components/AssignmentManagement').then(module => ({ default: module.AssignmentManagement })));
 const SubjectManagement = lazy(() => import('./components/SubjectManagement').then(module => ({ default: module.SubjectManagement })));
 const GradeLevelManagement = lazy(() => import('./components/GradeLevelManagement').then(module => ({ default: module.GradeLevelManagement })));
 const StudentManagement = lazy(() => import('./components/StudentManagement').then(module => ({ default: module.StudentManagement })));
-const GroupDirectorDashboard = lazy(() => import('./components/GroupDirectorDashboard'));
+const GroupDirectorPage = lazy(() => import('./pages/GroupDirectorPage').then(module => ({ default: module.GroupDirectorPage })));
 const AcademicSettings = lazy(() => import('./components/AcademicSettings'));
 const LoginPage = lazy(() => import('./app/login/page'));
-
-
-type ViewMode = 
-  | 'LOGIN' 
-  | 'DASHBOARD' 
-  | 'GRADEBOOK' 
-  | 'REPORT' 
-  | 'USER_MANAGEMENT' 
-  | 'ASSIGNMENT_MANAGEMENT'
-  | 'SUBJECT_MANAGEMENT'
-  | 'GRADE_LEVEL_MANAGEMENT'
-  | 'STUDENT_MANAGEMENT'
-  | 'GROUP_DIRECTOR_VIEW'
-  | 'ACADEMIC_SETTINGS';
+const Profile = lazy(() => import('./pages/Profile').then(module => ({ default: module.Profile })));
 
 interface ErrorBoundaryProps {
   children?: React.ReactNode;
@@ -54,7 +33,6 @@ interface ErrorBoundaryState {
 }
 
 class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  // FIX: Initialized state using a class property to ensure it's always available on the component instance. This resolves errors where `this.state` or `this.props` were accessed before being defined.
   state: ErrorBoundaryState = { hasError: false };
 
   static getDerivedStateFromError(_error: Error): ErrorBoundaryState {
@@ -62,7 +40,7 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error("Uncaught error:", error, errorInfo);
+    console.error('Uncaught error:', error, errorInfo);
   }
 
   render() {
@@ -81,66 +59,37 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
   }
 }
 
-
-
 const AppLoader: React.FC = () => (
-    <div className="w-full h-full flex items-center justify-center p-8">
-        <Loader2 className="animate-spin text-neutral-600" size={48} />
-    </div>
+  <div className="w-full h-full flex items-center justify-center p-8">
+    <Loader2 className="animate-spin text-neutral-600" size={48} />
+  </div>
 );
 
-const StatCard: React.FC<{ 
-    title: string; 
-    value: string; 
-    change: string; 
-    changeType: 'positive' | 'negative';
-    description: string;
-}> = ({ title, value, change, changeType, description }) => {
-    const changeColor = changeType === 'positive' ? 'text-emerald-600' : 'text-red-600';
-    return (
-        <div className="bg-white p-5 rounded-lg shadow-sm border">
-            <div className="flex justify-between items-start">
-                <p className="text-sm font-medium text-neutral-500">{title}</p>
-                <div className={`flex items-center text-xs font-semibold ${changeColor}`}>
-                    {change}
-                    {changeType === 'positive' ? <ArrowUp size={12} className="ml-0.5" /> : <ArrowDown size={12} className="ml-0.5" />}
-                </div>
-            </div>
-            <p className="text-3xl font-bold text-neutral-800 mt-1">{value}</p>
-            <p className="text-xs text-neutral-500 mt-2">{description}</p>
-        </div>
-    );
-};
-
-
-const VIEW_TITLES: { [key in ViewMode]?: string } = {
-    DASHBOARD: 'Panel Principal',
-    GRADEBOOK: 'Libro de Calificaciones',
-    REPORT: 'Informes Académicos',
-    USER_MANAGEMENT: 'Gestión de Usuarios',
-    ASSIGNMENT_MANAGEMENT: 'Gestión de Asignaciones',
-    SUBJECT_MANAGEMENT: 'Gestión de Materias',
-    GRADE_LEVEL_MANAGEMENT: 'Gestión de Grados',
-    STUDENT_MANAGEMENT: 'Gestión de Alumnos',
-    GROUP_DIRECTOR_VIEW: 'Dirección de Grupo',
-    ACADEMIC_SETTINGS: 'Ajustes Académicos',
+const PAGE_TITLES: { [key: string]: string } = {
+  '/dashboard': 'Panel Principal',
+  '/gradebook': 'Libro de Calificaciones',
+  '/report': 'Informes Académicos',
+  '/users': 'Gestión de Usuarios',
+  '/assignments': 'Gestión de Asignaciones',
+  '/subjects': 'Gestión de Materias',
+  '/grade-levels': 'Gestión de Grados',
+  '/students': 'Gestión de Alumnos',
+  '/group-director': 'Dirección de Grupo',
+  '/settings': 'Ajustes Académicos',
+  '/profile': 'Mi Perfil',
 };
 
 function App() {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [selectedAssignment, setSelectedAssignment] = useState<Assignment | null>(null);
-  const [viewMode, setViewMode] = useState<ViewMode>('LOGIN');
-  
   const [groupedAssignments, setGroupedAssignments] = useState<GroupedAssignment[]>([]);
-  const [selectedSubject, setSelectedSubject] = useState<GroupedAssignment | null>(null);
-  const [gradeData, setGradeData] = useState<StudentGradeRecord[]>([]);
-  const [gradeDataCache, setGradeDataCache] = useState<Map<string, StudentGradeRecord[]>>(new Map());
   const [directedGrade, setDirectedGrade] = useState<GradeLevel | null>(null);
   const [loading, setLoading] = useState(false);
   const [stats, setStats] = useState({ students: 0, teachers: 0, courses: 0 });
   const [academicSettings, setAcademicSettings] = useState<AcademicSettingsType | null>(null);
   const { addToast } = useToast();
-  
+
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
 
@@ -153,10 +102,10 @@ function App() {
         const { settings, isDefault } = await db.getAcademicSettings();
         setAcademicSettings(settings);
         setCurrentUser(user);
-        setViewMode('DASHBOARD');
+        navigate('/dashboard');
         addToast('Bienvenido/a de nuevo!', 'success');
         if (isDefault && (user.role === UserRole.SUPER_ADMIN || user.role === UserRole.ADMIN_COLEGIO)) {
-            addToast('Ajustes académicos por defecto. Guarde su configuración personalizada.', 'info');
+          addToast('Ajustes académicos por defecto. Guarde su configuración personalizada.', 'info');
         }
       } else {
         addToast('Usuario o contraseña incorrectos.', 'error');
@@ -175,11 +124,10 @@ function App() {
     setCurrentUser(null);
     setUsername('');
     setPassword('');
-    setViewMode('LOGIN');
-    setGradeDataCache(new Map()); // Clear cache on logout
+    navigate('/login');
     addToast('Sesión cerrada exitosamente.');
   };
-  
+
   const loadDashboardData = useCallback(async () => {
     if (!currentUser || !academicSettings) return;
     try {
@@ -187,224 +135,36 @@ function App() {
       if (currentUser.role === UserRole.DOCENTE) {
         const [myAssignments, myDirectedGrade] = await Promise.all([
           db.getTeacherAssignments(currentUser.id),
-          db.getDirectedGradeLevel(currentUser.id)
+          db.getDirectedGradeLevel(currentUser.id),
         ]);
         setGroupedAssignments(myAssignments);
         setDirectedGrade(myDirectedGrade);
-        if (myAssignments.length > 0) {
-          setSelectedSubject(myAssignments[0]);
-        }
       } else if (currentUser.role === UserRole.ADMIN_COLEGIO || currentUser.role === UserRole.SUPER_ADMIN) {
         const adminStats = await db.getStats();
         setStats(adminStats);
       }
     } catch (error) {
-      console.error("Error loading dashboard data:", error);
-      addToast("No se pudieron cargar los datos del panel.", 'error');
+      console.error('Error loading dashboard data:', error);
+      addToast('No se pudieron cargar los datos del panel.', 'error');
     } finally {
       setLoading(false);
     }
   }, [currentUser, addToast, academicSettings]);
 
   useEffect(() => {
-    if (viewMode === 'DASHBOARD') {
+    if (location.pathname === '/dashboard' && currentUser) {
       loadDashboardData();
     }
-  }, [viewMode, loadDashboardData]);
+  }, [location.pathname, currentUser, loadDashboardData]);
 
-  const selectAssignment = async (assignment: Assignment) => {
-    if (!academicSettings) {
-      addToast("Academic settings not loaded.", "error");
-      return;
-    }
-    setSelectedAssignment(assignment);
-    setLoading(true);
-    setViewMode('GRADEBOOK');
-    try {
-      if (gradeDataCache.has(assignment.id)) {
-        setGradeData(gradeDataCache.get(assignment.id)!);
-      } else {
-        const grades = await db.getAssignmentGrades(assignment.originalId || assignment.id, assignment.students, academicSettings);
-        setGradeData(grades);
-        setGradeDataCache(prev => new Map(prev).set(assignment.id, grades));
-      }
-    } catch (error) {
-      console.error(error);
-      addToast('Error al cargar las calificaciones.', 'error');
-    } finally {
-      setLoading(false);
-    }
+  const selectAssignment = (assignment: Assignment) => {
+    navigate(`/gradebook/${assignment.id}`);
   };
 
-  const handleSaveGradebook = async (
-    updatedGrades: StudentGradeRecord[],
-    updatedTaskActivities: { [p: number]: Activity[] },
-    updatedWorkshopActivities: { [p: number]: Activity[] }
-  ) => {
-    if (!selectedAssignment) return;
-    const assignmentId = selectedAssignment.originalId || selectedAssignment.id;
-
-    try {
-      await Promise.all([
-        db.saveGrades(assignmentId, updatedGrades),
-        db.saveAssignmentActivities(assignmentId, updatedTaskActivities, updatedWorkshopActivities),
-      ]);
-      setGradeData(updatedGrades); // Update local state
-      
-      // Update cache
-      setGradeDataCache(prev => new Map(prev).set(selectedAssignment.id, updatedGrades));
-      
-      // Update assignment object in state
-      const updatedAssignment = {
-        ...selectedAssignment,
-        taskActivities: updatedTaskActivities,
-        workshopActivities: updatedWorkshopActivities
-      };
-      setSelectedAssignment(updatedAssignment);
-
-    } catch (error) {
-      console.error("Failed to save gradebook changes:", error);
-      throw error;
-    }
+  const getCurrentTitle = () => {
+    const path = location.pathname.split('/')[1];
+    return PAGE_TITLES[`/${path}`] || 'EduGrade';
   };
-
-  const renderDashboard = () => {
-    if (loading) return <AppLoader />;
-    
-    if (currentUser?.role === UserRole.DOCENTE) {
-      return (
-        <>
-          <h2 className="text-2xl font-bold mb-6">Mis Asignaciones</h2>
-          {groupedAssignments.length === 0 ? (
-            <p className="text-neutral-500">No tienes asignaciones académicas configuradas.</p>
-          ) : (
-            <div className="space-y-6">
-              {groupedAssignments.map(group => (
-                <Card key={group.subject.id}>
-                  <CardHeader>
-                    <CardTitle>{group.subject.name}</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                      {group.assignments.map(assignment => (
-                        <button key={assignment.id} onClick={() => selectAssignment(assignment)} className="p-4 border rounded-lg hover:bg-neutral-50 text-left transition-colors">
-                          <p className="font-bold">{assignment.gradeLevel?.name}</p>
-                          <p className="text-sm text-neutral-500">{assignment.students.length} alumnos</p>
-                        </button>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-        </>
-      );
-    }
-
-    if (currentUser?.role === UserRole.ADMIN_COLEGIO || currentUser?.role === UserRole.SUPER_ADMIN) {
-        return (
-            <>
-                 <h2 className="text-2xl font-bold mb-6">Resumen del Colegio</h2>
-                 <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                    <StatCard 
-                        title="Total Alumnos"
-                        value={stats.students.toString()}
-                        change="+5.2%"
-                        changeType="positive"
-                        description="desde el mes pasado"
-                    />
-                     <StatCard 
-                        title="Total Docentes"
-                        value={stats.teachers.toString()}
-                        change="+1.1%"
-                        changeType="positive"
-                        description="desde el mes pasado"
-                    />
-                     <StatCard 
-                        title="Total Asignaturas"
-                        value={stats.courses.toString()}
-                        change="-0.5%"
-                        changeType="negative"
-                        description="desde el mes pasado"
-                    />
-                </div>
-            </>
-        )
-    }
-
-    return null;
-  };
-
-  const renderView = () => {
-    switch(viewMode) {
-      case 'DASHBOARD': return renderDashboard();
-      case 'GRADEBOOK': 
-        return selectedAssignment && academicSettings ? (
-          <Suspense fallback={<AppLoader />}>
-            <GradeBook 
-              key={selectedAssignment.id}
-              assignmentId={selectedAssignment.id}
-              students={selectedAssignment.students}
-              data={gradeData}
-              taskActivities={selectedAssignment.taskActivities}
-              workshopActivities={selectedAssignment.workshopActivities}
-              onSave={handleSaveGradebook}
-              onViewReport={() => setViewMode('REPORT')}
-              academicSettings={academicSettings}
-            />
-          </Suspense>
-        ) : <p>Seleccione una asignación.</p>;
-      case 'REPORT':
-         return selectedAssignment && academicSettings ? (
-          <Suspense fallback={<AppLoader />}>
-            <AcademicReport 
-              students={selectedAssignment.students}
-              data={gradeData}
-              taskActivities={selectedAssignment.taskActivities}
-              workshopActivities={selectedAssignment.workshopActivities}
-              onSave={handleSaveGradebook}
-              onBackToGradeBook={() => setViewMode('GRADEBOOK')}
-              assignment={selectedAssignment}
-              academicSettings={academicSettings}
-            />
-          </Suspense>
-        ) : <p>Seleccione una asignación.</p>;
-      case 'USER_MANAGEMENT': 
-        return <Suspense fallback={<AppLoader />}><UserManagement /></Suspense>;
-      case 'ASSIGNMENT_MANAGEMENT':
-        return <Suspense fallback={<AppLoader />}><AssignmentManagement /></Suspense>;
-      case 'SUBJECT_MANAGEMENT':
-        return <Suspense fallback={<AppLoader />}><SubjectManagement /></Suspense>;
-      case 'GRADE_LEVEL_MANAGEMENT':
-        return <Suspense fallback={<AppLoader />}><GradeLevelManagement /></Suspense>;
-      case 'STUDENT_MANAGEMENT':
-        return <Suspense fallback={<AppLoader />}><StudentManagement /></Suspense>;
-      case 'GROUP_DIRECTOR_VIEW':
-        return directedGrade && academicSettings ? <Suspense fallback={<AppLoader />}><GroupDirectorDashboard gradeLevel={directedGrade} academicSettings={academicSettings} /></Suspense> : <p>No eres director de ningún grupo.</p>;
-      case 'ACADEMIC_SETTINGS':
-        return <Suspense fallback={<AppLoader />}><AcademicSettings /></Suspense>;
-      default:
-        return <p>Vista no encontrada.</p>;
-    }
-  };
-  
-  if (!currentUser && isSupabaseConfigured()) {
-    return (
-      <RootLayout>
-        <Suspense fallback={<AppLoader />}>
-          <LoginPage
-            username={username}
-            setUsername={setUsername}
-            password={password}
-            setPassword={setPassword}
-            handleLogin={handleLogin}
-            loading={loading}
-          />
-        </Suspense>
-      </RootLayout>
-    );
-  }
 
   if (!isSupabaseConfigured()) {
     return (
@@ -426,22 +186,142 @@ function App() {
     );
   }
 
-  const currentTitle = VIEW_TITLES[viewMode] || 'EduGrade';
-
   return (
     <RootLayout>
-      <AppLayout
-        currentUser={currentUser}
-        viewMode={viewMode}
-        setViewMode={setViewMode}
-        onLogout={handleLogout}
-        directedGrade={directedGrade}
-        currentTitle={currentTitle}
-      >
-        <ErrorBoundary>
-          {renderView()}
-        </ErrorBoundary>
-      </AppLayout>
+      <Routes>
+        <Route
+          path="/login"
+          element={
+            currentUser ? (
+              <Navigate to="/dashboard" replace />
+            ) : (
+              <Suspense fallback={<AppLoader />}>
+                <LoginPage
+                  username={username}
+                  setUsername={setUsername}
+                  password={password}
+                  setPassword={setPassword}
+                  handleLogin={handleLogin}
+                  loading={loading}
+                />
+              </Suspense>
+            )
+          }
+        />
+
+        <Route
+          path="/*"
+          element={
+            <ProtectedRoute currentUser={currentUser}>
+              <AppLayout
+                currentUser={currentUser!}
+                onLogout={handleLogout}
+                directedGrade={directedGrade}
+                currentTitle={getCurrentTitle()}
+              >
+                <ErrorBoundary>
+                  <Suspense fallback={<AppLoader />}>
+                    <Routes>
+                      <Route
+                        path="/dashboard"
+                        element={
+                          <Dashboard
+                            currentUser={currentUser!}
+                            groupedAssignments={groupedAssignments}
+                            stats={stats}
+                            loading={loading}
+                            onSelectAssignment={selectAssignment}
+                          />
+                        }
+                      />
+
+                      <Route
+                        path="/gradebook/:assignmentId"
+                        element={academicSettings ? <GradeBookPage key={location.pathname} academicSettings={academicSettings} /> : <AppLoader />}
+                      />
+
+                      <Route
+                        path="/report/:assignmentId"
+                        element={academicSettings ? <ReportPage academicSettings={academicSettings} /> : <AppLoader />}
+                      />
+
+                      <Route
+                        path="/users"
+                        element={
+                          <ProtectedRoute currentUser={currentUser} allowedRoles={[UserRole.ADMIN_COLEGIO, UserRole.SUPER_ADMIN]}>
+                            <UserManagement />
+                          </ProtectedRoute>
+                        }
+                      />
+
+                      <Route
+                        path="/assignments"
+                        element={
+                          <ProtectedRoute currentUser={currentUser} allowedRoles={[UserRole.ADMIN_COLEGIO, UserRole.SUPER_ADMIN]}>
+                            <AssignmentManagement />
+                          </ProtectedRoute>
+                        }
+                      />
+
+                      <Route
+                        path="/subjects"
+                        element={
+                          <ProtectedRoute currentUser={currentUser} allowedRoles={[UserRole.ADMIN_COLEGIO, UserRole.SUPER_ADMIN]}>
+                            <SubjectManagement />
+                          </ProtectedRoute>
+                        }
+                      />
+
+                      <Route
+                        path="/grade-levels"
+                        element={
+                          <ProtectedRoute currentUser={currentUser} allowedRoles={[UserRole.ADMIN_COLEGIO, UserRole.SUPER_ADMIN]}>
+                            <GradeLevelManagement />
+                          </ProtectedRoute>
+                        }
+                      />
+
+                      <Route
+                        path="/students"
+                        element={
+                          <ProtectedRoute currentUser={currentUser} allowedRoles={[UserRole.ADMIN_COLEGIO, UserRole.SUPER_ADMIN]}>
+                            <StudentManagement />
+                          </ProtectedRoute>
+                        }
+                      />
+
+                      <Route
+                        path="/group-director"
+                        element={
+                          academicSettings ? (
+                            <GroupDirectorPage directedGrade={directedGrade} academicSettings={academicSettings} />
+                          ) : (
+                            <AppLoader />
+                          )
+                        }
+                      />
+
+                      <Route
+                        path="/settings"
+                        element={
+                          <ProtectedRoute currentUser={currentUser} allowedRoles={[UserRole.ADMIN_COLEGIO, UserRole.SUPER_ADMIN]}>
+                            <AcademicSettings />
+                          </ProtectedRoute>
+                        }
+                      />
+
+                      <Route path="/profile" element={<Profile currentUser={currentUser!} onUpdateUser={setCurrentUser} />} />
+
+                      <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+                    </Routes>
+                  </Suspense>
+                </ErrorBoundary>
+              </AppLayout>
+            </ProtectedRoute>
+          }
+        />
+      </Routes>
     </RootLayout>
   );
 }

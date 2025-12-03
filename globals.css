@@ -76,6 +76,12 @@
     @apply border-border;
   }
 
+  html, body, #root {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+  }
+
   body {
     @apply bg-background text-foreground;
   }
@@ -104,5 +110,29 @@
   }
   input[type=number] {
     -moz-appearance: textfield;
+  }
+
+  /* Table borders - simple and clean */
+  table {
+    border-collapse: collapse;
+  }
+  
+  /* Sticky first column for horizontal scroll */
+  table tbody td[class*="sticky"][class*="left-0"] {
+    background-color: white;
+    position: sticky;
+    left: 0;
+    z-index: 1;
+  }
+  
+  table tbody tr:hover td[class*="sticky"][class*="left-0"] {
+    background-color: rgb(250 250 250); /* neutral-50 */
+  }
+  
+  table thead th[class*="sticky"][class*="left-0"] {
+    position: sticky;
+    left: 0;
+    z-index: 2;
+    background-color: rgb(245 245 245); /* neutral-100 */
   }
 }

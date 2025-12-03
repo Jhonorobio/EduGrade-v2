@@ -46,7 +46,7 @@ export function Dashboard({ currentUser, groupedAssignments, stats, loading, onS
 
   if (currentUser.role === UserRole.DOCENTE) {
     return (
-      <>
+      <div className="flex-1 overflow-auto">
         <h2 className="text-2xl font-bold mb-6">Mis Asignaciones</h2>
         {groupedAssignments.length === 0 ? (
           <p className="text-neutral-500">No tienes asignaciones académicas configuradas.</p>
@@ -75,13 +75,13 @@ export function Dashboard({ currentUser, groupedAssignments, stats, loading, onS
             ))}
           </div>
         )}
-      </>
+      </div>
     );
   }
 
   if (currentUser.role === UserRole.ADMIN_COLEGIO || currentUser.role === UserRole.SUPER_ADMIN) {
     return (
-      <>
+      <div className="flex-1 overflow-auto">
         <h2 className="text-2xl font-bold mb-6">Resumen del Colegio</h2>
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           <StatCard
@@ -106,7 +106,7 @@ export function Dashboard({ currentUser, groupedAssignments, stats, loading, onS
             description="desde el mes pasado"
           />
         </div>
-      </>
+      </div>
     );
   }
 

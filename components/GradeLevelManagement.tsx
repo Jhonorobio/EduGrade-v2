@@ -1,18 +1,49 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { db } from '../services/db';
 import { GradeLevel, User, UserRole } from '../types';
-import { Plus, Edit, X, Loader2, Trash2, PlusCircle, ArrowUp, ArrowDown, ChevronsUpDown } from 'lucide-react';
+import { Edit, Loader2, Trash2, PlusCircle, ArrowUp, ArrowDown, ChevronsUpDown } from 'lucide-react';
 import { ConfirmationModal } from './ConfirmationModal';
 import { useToast } from './Toast';
+import { Button } from './ui/button';
+import { Input } from './ui/input';
+import { Label } from './ui/label';
+import { Switch } from './ui/switch';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from './ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from './ui/dialog';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from './ui/table';
 
 interface GradeLevelManagementProps {}
 
 const GradeLevelFormModal: React.FC<{
   gradeLevel: GradeLevel | null;
+  open: boolean;
   onSave: (gradeLevel: Partial<GradeLevel>) => void;
   onCancel: () => void;
-}> = ({ gradeLevel, onSave, onCancel }) => {
+}> = ({ gradeLevel, open, onSave, onCancel }) => {
   const [name, setName] = useState(gradeLevel?.name || '');
+
+  useEffect(() => {
+    setName(gradeLevel?.name || '');
+  }, [gradeLevel]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -20,33 +51,34 @@ const GradeLevelFormModal: React.FC<{
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
-        <div className="p-4 border-b flex justify-between items-center">
-          <h3 className="text-lg font-bold">{gradeLevel ? 'Editar Grado' : 'Nuevo Grado'}</h3>
-          <button onClick={onCancel} className="p-1 hover:bg-slate-200 rounded-full"><X size={20} /></button>
-        </div>
+    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onCancel()}>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>{gradeLevel ? 'Editar Grado' : 'Nuevo Grado'}</DialogTitle>
+        </DialogHeader>
         <form onSubmit={handleSubmit}>
-          <div className="p-6">
-            <label className="text-sm font-medium text-slate-600">Nombre del Grado (Ej: 6-1, 10-A)</label>
-            <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="mt-1 w-full p-2 border rounded" required />
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">Nombre del Grado (Ej: 6-1, 10-A)</Label>
+              <Input
+                id="name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+              />
+            </div>
           </div>
-          <div className="p-4 bg-slate-50 flex justify-end gap-2">
-            <button type="button" onClick={onCancel} className="px-4 py-2 bg-slate-200 rounded">Cancelar</button>
-            <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded">Guardar</button>
-          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={onCancel}>
+              Cancelar
+            </Button>
+            <Button type="submit">Guardar</Button>
+          </DialogFooter>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 };
-
-const ToggleSwitch: React.FC<{ checked: boolean; onChange: () => void; }> = ({ checked, onChange }) => (
-  <label className="relative inline-flex items-center cursor-pointer">
-    <input type="checkbox" checked={checked} onChange={onChange} className="sr-only peer" />
-    <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
-  </label>
-);
 
 export const GradeLevelManagement: React.FC<GradeLevelManagementProps> = () => {
   const [gradeLevels, setGradeLevels] = useState<GradeLevel[]>([]);
@@ -176,13 +208,12 @@ export const GradeLevelManagement: React.FC<GradeLevelManagementProps> = () => {
 
   return (
     <div className="h-full flex flex-col">
-      {isModalOpen && (
-        <GradeLevelFormModal 
-          gradeLevel={editingGradeLevel}
-          onSave={handleSaveGradeLevel}
-          onCancel={() => { setIsModalOpen(false); setEditingGradeLevel(null); }}
-        />
-      )}
+      <GradeLevelFormModal 
+        gradeLevel={editingGradeLevel}
+        open={isModalOpen}
+        onSave={handleSaveGradeLevel}
+        onCancel={() => { setIsModalOpen(false); setEditingGradeLevel(null); }}
+      />
       <ConfirmationModal
         isOpen={!!gradeLevelToDelete}
         onConfirm={confirmDelete}
@@ -191,84 +222,115 @@ export const GradeLevelManagement: React.FC<GradeLevelManagementProps> = () => {
         message="¿Estás seguro? Esta acción no se puede deshacer. Si el grado está en uso por alguna asignación, no se podrá eliminar."
       />
       <div className="p-4 border-b flex items-center justify-between bg-white rounded-t-lg">
-        <button onClick={() => { setEditingGradeLevel(null); setIsModalOpen(true); }} className="flex items-center justify-center gap-2 px-3 py-2 bg-white text-slate-700 border border-slate-300 rounded-md hover:bg-slate-100 transition-colors font-medium text-sm">
+        <Button 
+          onClick={() => { setEditingGradeLevel(null); setIsModalOpen(true); }}
+          variant="outline"
+          className="gap-2"
+        >
           <PlusCircle size={16} /> Nuevo Grado
-        </button>
+        </Button>
       </div>
 
       <div className="flex-1 overflow-auto custom-scrollbar">
         {loading ? (
-            <div className="h-64 flex items-center justify-center"><Loader2 className="animate-spin text-indigo-600" size={48} /></div>
+          <div className="h-64 flex items-center justify-center">
+            <Loader2 className="animate-spin text-indigo-600" size={48} />
+          </div>
         ) : (
-          <table className="w-full text-sm">
-            <thead className="bg-slate-100 text-slate-600 sticky top-0">
-              <tr>
-                <th className="p-3 text-left font-bold">
-                  <button onClick={() => requestSort('name')} className="flex items-center hover:text-slate-900">
+          <Table>
+            <TableHeader className="bg-slate-100 sticky top-0">
+              <TableRow>
+                <TableHead>
+                  <Button 
+                    variant="ghost" 
+                    onClick={() => requestSort('name')} 
+                    className="flex items-center gap-1 h-auto p-0 hover:bg-transparent font-bold"
+                  >
                     Nombre del Grado {getSortIcon('name')}
-                  </button>
-                </th>
-                <th className="p-3 text-left font-bold hidden sm:table-cell">
-                  <button onClick={() => requestSort('director')} className="flex items-center hover:text-slate-900">
+                  </Button>
+                </TableHead>
+                <TableHead className="hidden sm:table-cell">
+                  <Button 
+                    variant="ghost" 
+                    onClick={() => requestSort('director')} 
+                    className="flex items-center gap-1 h-auto p-0 hover:bg-transparent font-bold"
+                  >
                     Director de Grupo {getSortIcon('director')}
-                  </button>
-                </th>
-                <th className="p-3 text-center font-bold w-32">Habilitado</th>
-                <th className="p-3 text-center font-bold w-32">Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
+                  </Button>
+                </TableHead>
+                <TableHead className="text-center w-32">Habilitado</TableHead>
+                <TableHead className="text-center w-32">Acciones</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {sortedGradeLevels.map(gradeLevel => (
-                <tr key={gradeLevel.id} className={`border-b hover:bg-slate-50 ${!gradeLevel.isEnabled ? 'opacity-50 bg-slate-50' : ''}`}>
-                  <td className="p-3 font-medium">
+                <TableRow key={gradeLevel.id} className={!gradeLevel.isEnabled ? 'opacity-50 bg-slate-50' : ''}>
+                  <TableCell className="font-medium">
                     {gradeLevel.name}
-                     <div className="sm:hidden mt-2">
-                        <select 
-                          value={gradeLevel.directorId || ''}
-                          onChange={(e) => handleUpdateDirector(gradeLevel.id, e.target.value || null)}
-                          className="w-full p-2 border rounded bg-white text-xs"
-                        >
-                          <option value="">Sin Asignar</option>
-                          {teachers.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-                        </select>
-                      </div>
-                  </td>
-                   <td className="p-3 font-medium hidden sm:table-cell">
-                      <select 
+                    <div className="sm:hidden mt-2">
+                      <Select
                         value={gradeLevel.directorId || ''}
-                        onChange={(e) => handleUpdateDirector(gradeLevel.id, e.target.value || null)}
-                        className="w-full p-2 border rounded bg-white"
+                        onValueChange={(value) => handleUpdateDirector(gradeLevel.id, value || null)}
                       >
-                        <option value="">Sin Asignar</option>
-                        {teachers.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-                      </select>
-                  </td>
-                  <td className="p-3 text-center">
-                    <ToggleSwitch 
-                      checked={gradeLevel.isEnabled} 
-                      onChange={() => handleToggleIsEnabled(gradeLevel)} 
-                    />
-                  </td>
-                  <td className="p-3 text-center">
+                        <SelectTrigger className="w-full text-xs">
+                          <SelectValue placeholder="Sin Asignar" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">Sin Asignar</SelectItem>
+                          {teachers.map(t => (
+                            <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </TableCell>
+                  <TableCell className="hidden sm:table-cell">
+                    <Select
+                      value={gradeLevel.directorId || ''}
+                      onValueChange={(value) => handleUpdateDirector(gradeLevel.id, value || null)}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Sin Asignar" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">Sin Asignar</SelectItem>
+                        {teachers.map(t => (
+                          <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <div className="flex justify-center">
+                      <Switch 
+                        checked={gradeLevel.isEnabled} 
+                        onCheckedChange={() => handleToggleIsEnabled(gradeLevel)} 
+                      />
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-center">
                     <div className="flex justify-center gap-2">
-                      <button 
-                        onClick={() => { setEditingGradeLevel(gradeLevel); setIsModalOpen(true); }} 
-                        className="p-2 hover:bg-slate-200 rounded"
+                      <Button 
+                        variant="ghost" 
+                        size="icon"
+                        onClick={() => { setEditingGradeLevel(gradeLevel); setIsModalOpen(true); }}
                       >
                         <Edit size={16} />
-                      </button>
-                      <button
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="icon"
                         onClick={() => handleDelete(gradeLevel.id)}
-                        className="p-2 text-red-500 hover:bg-red-100 rounded"
+                        className="text-red-500 hover:text-red-600 hover:bg-red-100"
                       >
                         <Trash2 size={16} />
-                      </button>
+                      </Button>
                     </div>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         )}
       </div>
     </div>

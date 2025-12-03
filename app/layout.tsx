@@ -14,8 +14,8 @@ export default function RootLayout({
   // The <html>, <body>, and global font styles are managed by index.html.
   // This component provides a structural container.
   return (
-    <>
+    <div className="h-full">
       {children}
-    </>
+    </div>
   );
 }
