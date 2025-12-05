@@ -1,5 +1,5 @@
 import React, { useState, useEffect, memo, useCallback, useRef, useMemo } from 'react';
-import { Trash2, Save, BarChart2, ChevronDown, Edit, PlusCircle, Loader2, AlertCircle, Check, CloudCheck } from 'lucide-react';
+import { Trash2, Save, BarChart2, ChevronDown, Edit, PlusCircle, Loader2, AlertCircle, Check, CloudCheck, MoreVertical, Calendar, FileText } from 'lucide-react';
 import { Student, StudentGradeRecord, PerformanceLevel, Activity, PeriodGradeData, AcademicSettings } from '../types';
 import { ConfirmationModal } from './ConfirmationModal';
 import { useToast } from './Toast';
@@ -13,6 +13,7 @@ import { Alert, AlertDescription } from './ui/alert';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from './ui/tabs';
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from './ui/table';
 import { Badge } from './ui/badge';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
 
 
 interface GradeBookProps {
@@ -32,6 +33,14 @@ const getGradeInputColor = (value: number | string | null | undefined) => {
   if (numValue < 6.0) return 'bg-red-50';
   if (numValue >= 9.0) return 'bg-green-50';
   return 'bg-white';
+};
+
+const formatDateShort = (dateString: string) => {
+  const date = new Date(dateString);
+  const months = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC'];
+  const month = months[date.getMonth()];
+  const day = date.getDate().toString().padStart(2, '0');
+  return `${month} ${day}`;
 };
 
 const AddActivityModal: React.FC<{
@@ -97,6 +106,75 @@ const AddActivityModal: React.FC<{
   );
 };
 
+const EditActivityModal: React.FC<{
+  isOpen: boolean;
+  onClose: () => void;
+  onSave: (name: string, date: string) => void;
+  activity: Activity | null;
+  type: 'tasks' | 'workshops';
+}> = ({ isOpen, onClose, onSave, activity, type }) => {
+  const [name, setName] = useState('');
+  const [date, setDate] = useState('');
+
+  useEffect(() => {
+    if (activity) {
+      setName(activity.name);
+      setDate(activity.date);
+    }
+  }, [activity]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (name.trim()) {
+      onSave(name, date);
+      onClose();
+    }
+  };
+
+  const title = type === 'tasks' ? 'Editar Apuntes/Tareas' : 'Editar Talleres y Exposiciones';
+
+  return (
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit}>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="editActivityName">Nombre de la Actividad</Label>
+              <Input
+                id="editActivityName"
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Ej: Taller #1"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="editActivityDate">Fecha</Label>
+              <Input
+                id="editActivityDate"
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                required
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={onClose}>
+              Cancelar
+            </Button>
+            <Button type="submit">Guardar Cambios</Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
 
 const GradeBookRow = memo<{
   studentId: string;
@@ -109,11 +187,15 @@ const GradeBookRow = memo<{
   updateGrade: (studentId: string, type: 'tasks' | 'workshops', index: number, value: string) => void;
   updateSingleGrade: (studentId: string, field: 'attitude' | 'exam', value: string) => void;
   handleKeyDown: (event: React.KeyboardEvent<HTMLInputElement>, studentId: string, currentType: 'tasks' | 'workshops' | 'attitude' | 'exam', currentIndex?: number) => void;
-}>(({ studentId, periodData, student, taskColumns, workshopColumns, calculateRow, getPerformanceColor, updateGrade, updateSingleGrade, handleKeyDown }) => {
+  rowIndex: number;
+  needsHorizontalScroll: boolean;
+  maxStudentNameWidth: number;
+}>(({ studentId, periodData, student, taskColumns, workshopColumns, calculateRow, getPerformanceColor, updateGrade, updateSingleGrade, handleKeyDown, rowIndex, needsHorizontalScroll, maxStudentNameWidth }) => {
   const stats = calculateRow(periodData, taskColumns, workshopColumns);
   return (
     <tr className="border-b hover:bg-neutral-50 group">
-      <td className="p-2 border-r font-medium text-neutral-700 sticky left-0 bg-white group-hover:bg-neutral-50 z-10 whitespace-nowrap shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)]">{student?.name || 'Unknown'}</td>
+      <td className="p-2 text-center text-neutral-500 text-sm bg-white group-hover:bg-neutral-50 relative after:content-[''] after:absolute after:top-0 after:right-0 after:bottom-0 after:w-px after:bg-neutral-300">{rowIndex + 1}</td>
+      <td className="p-2 font-medium text-neutral-700 bg-white group-hover:bg-neutral-50 overflow-hidden text-ellipsis whitespace-nowrap relative after:content-[''] after:absolute after:top-0 after:right-0 after:bottom-0 after:w-px after:bg-neutral-300" style={{ width: `${maxStudentNameWidth}px`, minWidth: `${maxStudentNameWidth}px`, maxWidth: `${maxStudentNameWidth}px` }} title={student?.name || 'Unknown'}>{student?.name || 'Unknown'}</td>
       {taskColumns > 0 ? (
         Array.from({ length: taskColumns }).map((_, i) => (
           <td key={`t-${i}`} className="p-0 border-r">
@@ -291,6 +373,10 @@ export const GradeBook: React.FC<GradeBookProps> = ({ students, data, taskActivi
   const [isAverageViewEnabled, setIsAverageViewEnabled] = useState(false);
 
   const [activityToDelete, setActivityToDelete] = useState<{ type: 'tasks' | 'workshops'; index: number } | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [activityToEdit, setActivityToEdit] = useState<{ type: 'tasks' | 'workshops'; index: number; activity: Activity } | null>(null);
+  const [needsHorizontalScroll, setNeedsHorizontalScroll] = useState(false);
+  const tableContainerRef = useRef<HTMLDivElement>(null);
   const [isAutoSaveEnabled, setIsAutoSaveEnabled] = useState(true);
   const [saveStatus, setSaveStatus] = useState<'saved' | 'unsaved' | 'saving' | 'error'>('saved');
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -402,6 +488,15 @@ export const GradeBook: React.FC<GradeBookProps> = ({ students, data, taskActivi
   const taskColumns = currentTaskActivities.length;
   const workshopColumns = currentWorkshopActivities.length;
 
+  // Calculate the width needed for the longest student name
+  const maxStudentNameWidth = useMemo(() => {
+    const longestName = students.reduce((longest, student) => 
+      student.name.length > longest.length ? student.name : longest
+    , '');
+    // Approximate: 8px per character + 32px padding
+    return Math.max(200, Math.min(300, longestName.length * 8 + 32));
+  }, [students]);
+
   // Reset scroll when period changes
   useEffect(() => {
     const scrollContainers = document.querySelectorAll('.overflow-auto');
@@ -410,6 +505,35 @@ export const GradeBook: React.FC<GradeBookProps> = ({ students, data, taskActivi
       container.scrollLeft = 0;
     });
   }, [currentPeriod]);
+
+  // Detect when horizontal scroll is needed
+  useEffect(() => {
+    const checkScrollNeed = () => {
+      if (tableContainerRef.current) {
+        const container = tableContainerRef.current;
+        const table = container.querySelector('table');
+        if (table) {
+          const needsScroll = table.offsetWidth > container.clientWidth;
+          setNeedsHorizontalScroll(needsScroll);
+        }
+      }
+    };
+
+    // Check initially with a delay to ensure DOM is ready
+    const initialTimeout = setTimeout(checkScrollNeed, 200);
+
+    // Check when window resizes
+    window.addEventListener('resize', checkScrollNeed);
+
+    // Check when activities change
+    const changeTimeout = setTimeout(checkScrollNeed, 300);
+
+    return () => {
+      window.removeEventListener('resize', checkScrollNeed);
+      clearTimeout(initialTimeout);
+      clearTimeout(changeTimeout);
+    };
+  }, [currentTaskActivities, currentWorkshopActivities, localData]);
 
   const createEmptyPeriodData = (): PeriodGradeData => ({
     tasks: [],
@@ -467,16 +591,7 @@ export const GradeBook: React.FC<GradeBookProps> = ({ students, data, taskActivi
     setSaveError(null);
   };
 
-  const handleActivityChange = (type: 'tasks' | 'workshops', index: number, field: 'name' | 'date', value: string) => {
-    if (typeof currentPeriod === 'string') return;
-    const updater = type === 'tasks' ? setLocalTaskActivities : setLocalWorkshopActivities;
-    updater(prev => {
-      const newActivitiesForPeriod = [...(prev[currentPeriod] || [])].map((act, i) => i === index ? { ...act, [field]: value } : act);
-      return { ...prev, [currentPeriod]: newActivitiesForPeriod };
-    });
-    setSaveStatus('unsaved');
-    setSaveError(null);
-  };
+
 
   const addActivity = (name: string, date: string) => {
     if (typeof currentPeriod === 'string') return;
@@ -492,6 +607,33 @@ export const GradeBook: React.FC<GradeBookProps> = ({ students, data, taskActivi
   const openAddModal = (type: 'tasks' | 'workshops') => {
     setModalActivityType(type);
     setIsAddModalOpen(true);
+  };
+
+  const openEditModal = (type: 'tasks' | 'workshops', index: number) => {
+    if (typeof currentPeriod === 'string') return;
+    const activities = type === 'tasks' ? localTaskActivities[currentPeriod] || [] : localWorkshopActivities[currentPeriod] || [];
+    const activity = activities[index];
+    if (activity) {
+      setActivityToEdit({ type, index, activity });
+      setIsEditModalOpen(true);
+    }
+  };
+
+  const handleSaveEditedActivity = (name: string, date: string) => {
+    if (!activityToEdit || typeof currentPeriod === 'string') return;
+    
+    const { type, index } = activityToEdit;
+    const updater = type === 'tasks' ? setLocalTaskActivities : setLocalWorkshopActivities;
+    
+    updater(prev => {
+      const newActivitiesForPeriod = [...(prev[currentPeriod] || [])];
+      newActivitiesForPeriod[index] = { name, date };
+      return { ...prev, [currentPeriod]: newActivitiesForPeriod };
+    });
+    
+    setSaveStatus('unsaved');
+    setSaveError(null);
+    setActivityToEdit(null);
   };
 
   const handleConfirmRemoveActivity = () => {
@@ -660,6 +802,16 @@ export const GradeBook: React.FC<GradeBookProps> = ({ students, data, taskActivi
         onAdd={addActivity}
         type={modalActivityType}
       />
+      <EditActivityModal
+        isOpen={isEditModalOpen}
+        onClose={() => {
+          setIsEditModalOpen(false);
+          setActivityToEdit(null);
+        }}
+        onSave={handleSaveEditedActivity}
+        activity={activityToEdit?.activity || null}
+        type={activityToEdit?.type || 'tasks'}
+      />
       <Tabs value={String(currentPeriod)} onValueChange={(value) => setCurrentPeriod(value === 'Resumen' ? 'Resumen' : Number(value))} className="!gap-0">
         <div className="px-4 py-2 flex-shrink-0 flex items-center justify-between gap-4 flex-wrap">
           <div className="flex items-center gap-3">
@@ -746,12 +898,14 @@ export const GradeBook: React.FC<GradeBookProps> = ({ students, data, taskActivi
             <TabsContent key={period} value={String(period)} className="!m-0 !p-0" style={{ display: 'block' }}>
           {/* Desktop Table View */}
           <div className="hidden md:block p-4">
-            <div className="w-full overflow-x-auto overflow-y-visible custom-scrollbar" style={{ maxWidth: '100%' }}>
+            <div className="overflow-hidden rounded-lg border">
+              <div ref={tableContainerRef} className="overflow-x-auto custom-scrollbar">
             {isAverageViewEnabled ? (
-                <Table>
+                <Table className="w-full [&_tr]:border-neutral-300 [&_td]:border-neutral-300 [&_th]:border-neutral-300">
                   <TableHeader className="sticky top-0 z-10 bg-neutral-100 shadow-sm">
                     <TableRow className="bg-neutral-100">
-                      <TableHead className="text-left min-w-[200px] sticky left-0 bg-neutral-100 z-30 border-r shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)]">Estudiante</TableHead>
+                      <TableHead className="text-center w-12 bg-neutral-100 border-r">#</TableHead>
+                      <TableHead className="text-left bg-neutral-100 border-r overflow-hidden" style={{ width: `${maxStudentNameWidth}px`, minWidth: `${maxStudentNameWidth}px`, maxWidth: `${maxStudentNameWidth}px` }}>Estudiante</TableHead>
                       <TableHead className="text-center w-32 bg-neutral-100 border-r">Prom. Tareas</TableHead>
                       <TableHead className="text-center w-32 bg-neutral-100 border-r">Prom. Talleres</TableHead>
                       <TableHead className="text-center w-32 bg-neutral-100 border-r">Actitudinal</TableHead>
@@ -761,7 +915,7 @@ export const GradeBook: React.FC<GradeBookProps> = ({ students, data, taskActivi
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {localData.map((row) => {
+                    {localData.map((row, index) => {
                       const student = students.find(s => s.id === row.studentId);
                       const periodData = row.periods[period] || createEmptyPeriodData();
                       
@@ -771,7 +925,8 @@ export const GradeBook: React.FC<GradeBookProps> = ({ students, data, taskActivi
 
                       return (
                         <TableRow key={`avg-${row.studentId}`}>
-                          <TableCell className="border-r font-medium sticky left-0 bg-white z-10 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)]">{student?.name || 'Unknown'}</TableCell>
+                          <TableCell className="text-center text-neutral-500 text-sm border-r">{index + 1}</TableCell>
+                          <TableCell className="border-r font-medium overflow-hidden text-ellipsis whitespace-nowrap" title={student?.name || 'Unknown'}>{student?.name || 'Unknown'}</TableCell>
                           <TableCell className="text-center border-r font-semibold">{taskAvg.toFixed(1)}</TableCell>
                           <TableCell className="text-center border-r font-semibold">{workshopAvg.toFixed(1)}</TableCell>
                           <TableCell className="text-center border-r font-semibold">{(periodData.attitude ?? 0).toFixed(1)}</TableCell>
@@ -784,51 +939,86 @@ export const GradeBook: React.FC<GradeBookProps> = ({ students, data, taskActivi
                   </TableBody>
                 </Table>
             ) : (
-                <Table>
+                <Table className="w-full [&_tr]:border-neutral-300 [&_td]:border-neutral-300 [&_th]:border-neutral-300">
                   <TableHeader className="sticky top-0 z-10 bg-neutral-100 shadow-sm">
+                    {/* Primera fila: Headers de grupo */}
                     <TableRow className="bg-neutral-100">
-                      <TableHead className="text-left min-w-[200px] sticky left-0 bg-neutral-100 z-30 border-r shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)]">Estudiante</TableHead>
-                      <TableHead colSpan={Math.max(1, periodTaskColumns)} className="text-center bg-neutral-100 border-r">Apuntes/Tareas</TableHead>
-                      <TableHead colSpan={Math.max(1, periodWorkshopColumns)} className="text-center bg-neutral-100 border-r">Talleres y Exposiciones</TableHead>
-                      <TableHead className="text-center w-24 bg-neutral-100 border-r">Actitudinal</TableHead>
-                      <TableHead className="text-center w-24 bg-neutral-100 border-r">Evaluación</TableHead>
-                      <TableHead className="text-center w-16 bg-neutral-100 border-r">Final</TableHead>
-                      <TableHead className="text-center w-24 bg-neutral-100">Desempeño</TableHead>
+                      <TableHead rowSpan={2} className="text-center w-12 bg-neutral-100 relative after:content-[''] after:absolute after:top-0 after:right-0 after:bottom-0 after:w-px after:bg-neutral-300">#</TableHead>
+                      <TableHead rowSpan={2} className="text-left bg-neutral-100 relative after:content-[''] after:absolute after:top-0 after:right-0 after:bottom-0 after:w-px after:bg-neutral-300 overflow-hidden" style={{ width: `${maxStudentNameWidth}px`, minWidth: `${maxStudentNameWidth}px`, maxWidth: `${maxStudentNameWidth}px` }}>Estudiante</TableHead>
+                      <TableHead colSpan={Math.max(1, periodTaskColumns)} className="text-center bg-neutral-100 border-r">
+                        Apuntes/Tareas
+                      </TableHead>
+                      <TableHead colSpan={Math.max(1, periodWorkshopColumns)} className="text-center bg-neutral-100 border-r">
+                        Talleres/Exposiciones
+                      </TableHead>
+                      <TableHead rowSpan={2} className="text-center bg-neutral-100 border-r" style={{ width: '48px', minWidth: '48px', maxWidth: '48px' }}>
+                        <div className="flex items-center justify-center h-16">
+                          <div className="transform -rotate-90 whitespace-nowrap text-xs font-semibold">
+                            Actitudinal
+                          </div>
+                        </div>
+                      </TableHead>
+                      <TableHead rowSpan={2} className="text-center bg-neutral-100 border-r" style={{ width: '48px', minWidth: '48px', maxWidth: '48px' }}>
+                        <div className="flex items-center justify-center h-16">
+                          <div className="transform -rotate-90 whitespace-nowrap text-xs font-semibold">
+                            Evaluación
+                          </div>
+                        </div>
+                      </TableHead>
+                      <TableHead rowSpan={2} className="text-center w-16 bg-neutral-100 border-r">Final</TableHead>
+                      <TableHead rowSpan={2} className="text-center w-24 bg-neutral-100">Desempeño</TableHead>
                     </TableRow>
+                    {/* Segunda fila: Actividades individuales */}
                     <TableRow className="bg-neutral-100">
-                      <TableHead className="sticky left-0 bg-neutral-100 z-30 border-r shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)]"></TableHead>
+                      {/* Actividades de Tareas */}
                       {periodTaskActivities.length > 0 ? (
                         periodTaskActivities.map((activity, i) => {
                           const isLast = i === periodTaskActivities.length - 1;
+                          const isFirst = i === 0;
                           return (
-                            <TableHead key={`th-t-${i}`} className="text-center min-w-[140px] text-xs align-top bg-neutral-100 border-r relative">
-                              <div className="flex flex-col items-center justify-center gap-1">
-                                <div className="relative w-full group/edit">
-                                  <input
-                                      type="text"
-                                      value={activity.name}
-                                      onChange={(e) => handleActivityChange('tasks', i, 'name', e.target.value)}
-                                      className="w-full font-semibold text-neutral-700 text-center bg-transparent border-b-2 border-transparent p-1 focus:ring-0 focus:outline-none focus:bg-white/50 rounded-none transition-colors duration-200 ease-in-out group-hover/edit:border-neutral-300 focus:border-neutral-400"
-                                      aria-label={`Nombre de la Tarea ${i + 1}`}
-                                  />
-                                  <Edit size={12} className="absolute right-1 top-1/2 -translate-y-1/2 text-neutral-400 group-hover/edit:text-neutral-600 transition-colors pointer-events-none" />
+                            <TableHead key={`th-t-${i}`} className="text-center w-24 text-xs align-top bg-neutral-100 border-r relative">
+                              <div className="flex items-center justify-center h-16 relative">
+                                {/* Menú de tres puntos en esquina superior derecha */}
+                                <div className="absolute top-0.5 right-0.5 z-20">
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <button
+                                        className="h-3 w-3 flex items-center justify-center text-neutral-600 p-0 m-0"
+                                      >
+                                        <span className="text-[10px] font-black leading-none">⋮</span>
+                                      </button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end" className="w-48">
+                                      <DropdownMenuItem onClick={() => openEditModal('tasks', i)}>
+                                        <FileText size={14} className="mr-2" />
+                                        Cambiar nombre
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => openEditModal('tasks', i)}>
+                                        <Calendar size={14} className="mr-2" />
+                                        Cambiar fecha
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem 
+                                        onClick={() => setActivityToDelete({ type: 'tasks', index: i })}
+                                        variant="destructive"
+                                      >
+                                        <Trash2 size={14} className="mr-2" />
+                                        Eliminar
+                                      </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
                                 </div>
-                                <input
-                                    type="date"
-                                    value={activity.date}
-                                    onChange={(e) => handleActivityChange('tasks', i, 'date', e.target.value)}
-                                    className="w-24 font-normal text-center text-neutral-500 bg-transparent focus:outline-none text-[10px] p-0 border-0"
-                                    aria-label={`Fecha de la Tarea ${i + 1}`}
-                                />
-                                <div className="flex items-center gap-2">
-                                    <span className="text-neutral-400 font-bold text-sm">{i + 1}</span>
-                                    <button 
-                                        onClick={() => setActivityToDelete({ type: 'tasks', index: i })} 
-                                        className="p-1 text-neutral-400 hover:text-red-500 hover:bg-red-100 rounded-full"
-                                        aria-label={`Eliminar tarea ${i + 1}`}
-                                    >
-                                        <Trash2 size={12} />
-                                    </button>
+                                
+                                {/* Nombre vertical y fecha horizontal con separador */}
+                                <div className="flex flex-col items-center justify-center gap-1 w-full h-full">
+                                  <div className="transform -rotate-90 whitespace-nowrap flex-1 flex items-center">
+                                    <div className="text-[10px] font-semibold text-neutral-700">
+                                      {activity.name}
+                                    </div>
+                                  </div>
+                                  <div className="w-6 h-px bg-neutral-400 my-1"></div>
+                                  <div className="text-[9px] text-neutral-500 font-medium whitespace-nowrap pb-1">
+                                    {formatDateShort(activity.date)}
+                                  </div>
                                 </div>
                               </div>
                               {isLast && (
@@ -859,34 +1049,49 @@ export const GradeBook: React.FC<GradeBookProps> = ({ students, data, taskActivi
                         periodWorkshopActivities.map((activity, i) => {
                           const isLast = i === periodWorkshopActivities.length - 1;
                           return (
-                            <TableHead key={`th-w-${i}`} className="text-center min-w-[140px] text-xs align-top bg-neutral-100 border-r relative">
-                              <div className="flex flex-col items-center justify-center gap-1">
-                                <div className="relative w-full group/edit">
-                                  <input
-                                      type="text"
-                                      value={activity.name}
-                                      onChange={(e) => handleActivityChange('workshops', i, 'name', e.target.value)}
-                                      className="w-full font-semibold text-neutral-700 text-center bg-transparent border-b-2 border-transparent p-1 focus:ring-0 focus:outline-none focus:bg-white/50 rounded-none transition-colors duration-200 ease-in-out group-hover/edit:border-neutral-300 focus:border-neutral-400"
-                                      aria-label={`Nombre del Taller ${i + 1}`}
-                                  />
-                                  <Edit size={12} className="absolute right-1 top-1/2 -translate-y-1/2 text-neutral-400 group-hover/edit:text-neutral-600 transition-colors pointer-events-none" />
+                            <TableHead key={`th-w-${i}`} className="text-center w-24 text-xs align-top bg-neutral-100 border-r relative">
+                              <div className="flex items-center justify-center h-16 relative">
+                                {/* Menú de tres puntos en esquina superior derecha */}
+                                <div className="absolute top-0.5 right-0.5 z-20">
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <button
+                                        className="h-3 w-3 flex items-center justify-center text-neutral-600 p-0 m-0"
+                                      >
+                                        <span className="text-[10px] font-black leading-none">⋮</span>
+                                      </button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end" className="w-48">
+                                      <DropdownMenuItem onClick={() => openEditModal('workshops', i)}>
+                                        <FileText size={14} className="mr-2" />
+                                        Cambiar nombre
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => openEditModal('workshops', i)}>
+                                        <Calendar size={14} className="mr-2" />
+                                        Cambiar fecha
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem 
+                                        onClick={() => setActivityToDelete({ type: 'workshops', index: i })}
+                                        variant="destructive"
+                                      >
+                                        <Trash2 size={14} className="mr-2" />
+                                        Eliminar
+                                      </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
                                 </div>
-                                <input
-                                    type="date"
-                                    value={activity.date}
-                                    onChange={(e) => handleActivityChange('workshops', i, 'date', e.target.value)}
-                                    className="w-24 font-normal text-center text-neutral-500 bg-transparent focus:outline-none text-[10px] p-0 border-0"
-                                    aria-label={`Fecha del Taller ${i + 1}`}
-                                />
-                                <div className="flex items-center gap-2">
-                                    <span className="text-neutral-400 font-bold text-sm">{i + 1}</span>
-                                    <button 
-                                        onClick={() => setActivityToDelete({ type: 'workshops', index: i })} 
-                                        className="p-1 text-neutral-400 hover:text-red-500 hover:bg-red-100 rounded-full"
-                                        aria-label={`Eliminar taller ${i + 1}`}
-                                    >
-                                        <Trash2 size={12} />
-                                    </button>
+                                
+                                {/* Nombre vertical y fecha horizontal con separador */}
+                                <div className="flex flex-col items-center justify-center gap-1 w-full h-full">
+                                  <div className="transform -rotate-90 whitespace-nowrap flex-1 flex items-center">
+                                    <div className="text-[10px] font-semibold text-neutral-700">
+                                      {activity.name}
+                                    </div>
+                                  </div>
+                                  <div className="w-6 h-px bg-neutral-400 my-1"></div>
+                                  <div className="text-[9px] text-neutral-500 font-medium whitespace-nowrap pb-1">
+                                    {formatDateShort(activity.date)}
+                                  </div>
                                 </div>
                               </div>
                               {isLast && (
@@ -913,14 +1118,10 @@ export const GradeBook: React.FC<GradeBookProps> = ({ students, data, taskActivi
                           </button>
                         </TableHead>
                       )}
-                      <TableHead className="bg-neutral-100 border-r"></TableHead>
-                      <TableHead className="bg-neutral-100 border-r"></TableHead>
-                      <TableHead className="bg-neutral-100 border-r"></TableHead>
-                      <TableHead className="bg-neutral-100"></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {localData.map((row) => (
+                    {localData.map((row, index) => (
                       <GradeBookRow 
                         key={row.studentId}
                         studentId={row.studentId}
@@ -933,11 +1134,15 @@ export const GradeBook: React.FC<GradeBookProps> = ({ students, data, taskActivi
                         updateGrade={updateGrade}
                         updateSingleGrade={updateSingleGrade}
                         handleKeyDown={handleKeyDown}
+                        rowIndex={index}
+                        needsHorizontalScroll={needsHorizontalScroll}
+                        maxStudentNameWidth={maxStudentNameWidth}
                       />
                     ))}
                   </TableBody>
                 </Table>
             )}
+              </div>
             </div>
             {/* Leyenda de porcentajes */}
             <div className="mt-4 px-4 py-3 bg-blue-50 border border-blue-200 rounded-lg">
@@ -976,8 +1181,9 @@ export const GradeBook: React.FC<GradeBookProps> = ({ students, data, taskActivi
         <TabsContent value="Resumen" className="!m-0 !p-0" style={{ display: 'block' }}>
           {/* Desktop Final Summary View */}
           <div className="hidden md:block p-4">
-            <div className="w-full overflow-x-auto custom-scrollbar">
-            <Table className="w-full">
+            <div className="overflow-hidden rounded-lg border">
+              <div className="overflow-x-auto custom-scrollbar">
+            <Table className="w-full [&_tr]:border-neutral-300 [&_td]:border-neutral-300 [&_th]:border-neutral-300">
                <TableHeader className="bg-neutral-100 sticky top-0 z-10 shadow-sm before:content-[''] before:absolute before:inset-0 before:bg-neutral-100 before:-z-10">
                   <TableRow className="bg-neutral-100">
                     <TableHead className="text-left min-w-[200px] bg-neutral-100">Estudiante</TableHead>
@@ -1005,6 +1211,7 @@ export const GradeBook: React.FC<GradeBookProps> = ({ students, data, taskActivi
                   })}
                  </TableBody>
             </Table>
+              </div>
             </div>
           </div>
           {/* Mobile Final Summary View */}

@@ -84,22 +84,68 @@
 
   body {
     @apply bg-background text-foreground;
+    scrollbar-width: thin;
+    scrollbar-color: #94a3b8 #e5e7eb;
   }
 
-  /* Custom scrollbar for tables */
-  .custom-scrollbar::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+  /* Custom scrollbar - aplicado globalmente */
+  * {
+    scrollbar-width: auto;
+    scrollbar-color: #94a3b8 #ffffff;
   }
-  .custom-scrollbar::-webkit-scrollbar-track {
-    background: #f1f1f1;
+  
+  *::-webkit-scrollbar {
+    width: 16px;
+    height: 16px;
   }
-  .custom-scrollbar::-webkit-scrollbar-thumb {
-    background: #cbd5e1;
-    border-radius: 4px;
+  
+  *::-webkit-scrollbar-track {
+    background: #ffffff;
+    border-radius: 8px;
   }
-  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  
+  *::-webkit-scrollbar-thumb {
     background: #94a3b8;
+    border-radius: 8px;
+    border: 3px solid #ffffff;
+  }
+  
+  *::-webkit-scrollbar-thumb:hover {
+    background: #64748b;
+  }
+  
+  *::-webkit-scrollbar-corner {
+    background: #ffffff;
+  }
+
+  /* Custom scrollbar para elementos específicos */
+  .custom-scrollbar {
+    scrollbar-width: auto;
+    scrollbar-color: #94a3b8 #ffffff;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 16px;
+    height: 16px;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: #ffffff;
+    border-radius: 8px;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #94a3b8;
+    border-radius: 8px;
+    border: 3px solid #ffffff;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #64748b;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-corner {
+    background: #ffffff;
   }
 
   /* Hide arrows from number inputs */
