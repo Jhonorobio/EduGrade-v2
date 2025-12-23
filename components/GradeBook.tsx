@@ -899,9 +899,9 @@ export const GradeBook: React.FC<GradeBookProps> = ({ students, data, taskActivi
           {/* Desktop Table View */}
           <div className="hidden md:block p-4">
             <div className="overflow-hidden rounded-lg border">
-              <div ref={tableContainerRef} className="overflow-x-auto custom-scrollbar">
+              <div ref={tableContainerRef} className="overflow-x-auto custom-scrollbar will-change-scroll">
             {isAverageViewEnabled ? (
-                <Table className="w-full [&_tr]:border-neutral-300 [&_td]:border-neutral-300 [&_th]:border-neutral-300">
+                <Table className="w-full border-collapse [&_tr]:border-neutral-300 [&_td]:border-neutral-300 [&_th]:border-neutral-300">
                   <TableHeader className="sticky top-0 z-10 bg-neutral-100 shadow-sm">
                     <TableRow className="bg-neutral-100">
                       <TableHead className="text-center w-12 bg-neutral-100 border-r">#</TableHead>
@@ -939,7 +939,7 @@ export const GradeBook: React.FC<GradeBookProps> = ({ students, data, taskActivi
                   </TableBody>
                 </Table>
             ) : (
-                <Table className="w-full [&_tr]:border-neutral-300 [&_td]:border-neutral-300 [&_th]:border-neutral-300">
+                <Table className="w-full border-collapse [&_tr]:border-neutral-300 [&_td]:border-neutral-300 [&_th]:border-neutral-300">
                   <TableHeader className="sticky top-0 z-10 bg-neutral-100 shadow-sm">
                     {/* Primera fila: Headers de grupo */}
                     <TableRow className="bg-neutral-100">
@@ -976,30 +976,28 @@ export const GradeBook: React.FC<GradeBookProps> = ({ students, data, taskActivi
                           const isLast = i === periodTaskActivities.length - 1;
                           const isFirst = i === 0;
                           return (
-                            <TableHead key={`th-t-${i}`} className="text-center w-24 text-xs align-top bg-neutral-100 border-r relative">
-                              <div className="flex items-center justify-center h-16 relative">
-                                {/* Menú de tres puntos en esquina superior derecha */}
-                                <div className="absolute top-0.5 right-0.5 z-20">
+                            <TableHead key={`th-t-${i}`} className="text-center w-20 text-xs align-top bg-neutral-100 border-r relative p-0">
+                              {/* Celda principal superior */}
+                              <div className="h-20 relative bg-neutral-100 border-b border-neutral-300">
+                                <div className="flex items-center justify-center h-full relative px-1 py-2">
+                                {/* Menú de configuración en esquina superior derecha */}
+                                <div className="absolute top-0 -right-2 z-20">
                                   <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
                                       <button
-                                        className="h-3 w-3 flex items-center justify-center text-neutral-600 p-0 m-0"
+                                        className="h-4 w-4 flex items-center justify-center text-neutral-600 hover:text-neutral-800 rounded-sm transition-colors"
                                       >
-                                        <span className="text-[10px] font-black leading-none">⋮</span>
+                                        <MoreVertical size={12} />
                                       </button>
                                     </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end" className="w-48">
+                                    <DropdownMenuContent align="end" className="w-40">
                                       <DropdownMenuItem onClick={() => openEditModal('tasks', i)}>
-                                        <FileText size={14} className="mr-2" />
-                                        Cambiar nombre
-                                      </DropdownMenuItem>
-                                      <DropdownMenuItem onClick={() => openEditModal('tasks', i)}>
-                                        <Calendar size={14} className="mr-2" />
-                                        Cambiar fecha
+                                        <Edit size={14} className="mr-2" />
+                                        Editar
                                       </DropdownMenuItem>
                                       <DropdownMenuItem 
                                         onClick={() => setActivityToDelete({ type: 'tasks', index: i })}
-                                        variant="destructive"
+                                        className="text-red-600 focus:text-red-600"
                                       >
                                         <Trash2 size={14} className="mr-2" />
                                         Eliminar
@@ -1008,18 +1006,77 @@ export const GradeBook: React.FC<GradeBookProps> = ({ students, data, taskActivi
                                   </DropdownMenu>
                                 </div>
                                 
-                                {/* Nombre vertical y fecha horizontal con separador */}
-                                <div className="flex flex-col items-center justify-center gap-1 w-full h-full">
-                                  <div className="transform -rotate-90 whitespace-nowrap flex-1 flex items-center">
-                                    <div className="text-[10px] font-semibold text-neutral-700">
-                                      {activity.name}
+                                  {/* Contenido centrado con márgenes uniformes */}
+                                <div className="flex flex-col items-center justify-between w-full h-full min-h-[64px] relative">
+                                  {/* Texto rotado con centrado perfecto */}
+                                  <div className="flex-1 flex items-center justify-center py-2">
+                                    <div className="transform -rotate-90 origin-center">
+                                      <div 
+                                        className="text-[10px] font-semibold text-neutral-700 text-center leading-[1.1] whitespace-nowrap max-w-[60px] overflow-hidden text-ellipsis" 
+                                        title={activity.name}
+                                        style={{
+                                          display: '-webkit-box',
+                                          WebkitLineClamp: 3,
+                                          WebkitBoxOrient: 'vertical',
+                                          overflow: 'hidden',
+                                          textOverflow: 'ellipsis',
+                                          lineHeight: '1.1',
+                                          maxHeight: '33px'
+                                        }}
+                                      >
+                                        {(() => {
+                                          const text = activity.name;
+                                          const maxLength = 45; // Máximo de caracteres
+                                          
+                                          if (text.length <= maxLength) {
+                                            return text;
+                                          }
+                                          
+                                          // Dividir en palabras y crear líneas inteligentemente
+                                          const words = text.split(' ');
+                                          const lines = [];
+                                          let currentLine = '';
+                                          
+                                          for (const word of words) {
+                                            const testLine = currentLine ? `${currentLine} ${word}` : word;
+                                            
+                                            if (testLine.length <= 15 && lines.length < 2) {
+                                              currentLine = testLine;
+                                            } else {
+                                              if (currentLine) {
+                                                lines.push(currentLine);
+                                                currentLine = word;
+                                              } else {
+                                                lines.push(word);
+                                              }
+                                              
+                                              if (lines.length >= 3) break;
+                                            }
+                                          }
+                                          
+                                          if (currentLine && lines.length < 3) {
+                                            lines.push(currentLine);
+                                          }
+                                          
+                                          // Si hay más contenido, agregar "..." a la última línea
+                                          if (lines.length === 3 && (currentLine !== lines[2] || words.length > lines.join(' ').split(' ').length)) {
+                                            lines[2] = lines[2].length > 12 ? lines[2].substring(0, 12) + '...' : lines[2] + '...';
+                                          }
+                                          
+                                          return lines.join('\n');
+                                        })()}
+                                      </div>
                                     </div>
                                   </div>
-                                  <div className="w-6 h-px bg-neutral-400 my-1"></div>
-                                  <div className="text-[9px] text-neutral-500 font-medium whitespace-nowrap pb-1">
-                                    {formatDateShort(activity.date)}
-                                  </div>
                                 </div>
+                              </div>
+                              
+                              {/* Celda pequeña inferior para la fecha */}
+                              <div className="h-4 bg-neutral-50 flex items-center justify-center border-t border-neutral-300">
+                                <div className="text-[9px] text-neutral-500 font-medium">
+                                  {formatDateShort(activity.date)}
+                                </div>
+                              </div>
                               </div>
                               {isLast && (
                                 <button 
@@ -1049,30 +1106,28 @@ export const GradeBook: React.FC<GradeBookProps> = ({ students, data, taskActivi
                         periodWorkshopActivities.map((activity, i) => {
                           const isLast = i === periodWorkshopActivities.length - 1;
                           return (
-                            <TableHead key={`th-w-${i}`} className="text-center w-24 text-xs align-top bg-neutral-100 border-r relative">
-                              <div className="flex items-center justify-center h-16 relative">
-                                {/* Menú de tres puntos en esquina superior derecha */}
-                                <div className="absolute top-0.5 right-0.5 z-20">
+                            <TableHead key={`th-w-${i}`} className="text-center w-20 text-xs align-top bg-neutral-100 border-r relative p-0">
+                              {/* Celda principal superior */}
+                              <div className="h-20 relative bg-neutral-100 border-b border-neutral-300">
+                                <div className="flex items-center justify-center h-full relative px-1 py-2">
+                                {/* Menú de configuración en esquina superior derecha */}
+                                <div className="absolute top-0 -right-2 z-20">
                                   <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
                                       <button
-                                        className="h-3 w-3 flex items-center justify-center text-neutral-600 p-0 m-0"
+                                        className="h-4 w-4 flex items-center justify-center text-neutral-600 hover:text-neutral-800 rounded-sm transition-colors"
                                       >
-                                        <span className="text-[10px] font-black leading-none">⋮</span>
+                                        <MoreVertical size={12} />
                                       </button>
                                     </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end" className="w-48">
+                                    <DropdownMenuContent align="end" className="w-40">
                                       <DropdownMenuItem onClick={() => openEditModal('workshops', i)}>
-                                        <FileText size={14} className="mr-2" />
-                                        Cambiar nombre
-                                      </DropdownMenuItem>
-                                      <DropdownMenuItem onClick={() => openEditModal('workshops', i)}>
-                                        <Calendar size={14} className="mr-2" />
-                                        Cambiar fecha
+                                        <Edit size={14} className="mr-2" />
+                                        Editar
                                       </DropdownMenuItem>
                                       <DropdownMenuItem 
                                         onClick={() => setActivityToDelete({ type: 'workshops', index: i })}
-                                        variant="destructive"
+                                        className="text-red-600 focus:text-red-600"
                                       >
                                         <Trash2 size={14} className="mr-2" />
                                         Eliminar
@@ -1081,18 +1136,77 @@ export const GradeBook: React.FC<GradeBookProps> = ({ students, data, taskActivi
                                   </DropdownMenu>
                                 </div>
                                 
-                                {/* Nombre vertical y fecha horizontal con separador */}
-                                <div className="flex flex-col items-center justify-center gap-1 w-full h-full">
-                                  <div className="transform -rotate-90 whitespace-nowrap flex-1 flex items-center">
-                                    <div className="text-[10px] font-semibold text-neutral-700">
-                                      {activity.name}
+                                {/* Contenido centrado con márgenes uniformes */}
+                                <div className="flex flex-col items-center justify-between w-full h-full min-h-[64px] relative">
+                                  {/* Texto rotado con centrado perfecto */}
+                                  <div className="flex-1 flex items-center justify-center py-2">
+                                    <div className="transform -rotate-90 origin-center">
+                                      <div 
+                                        className="text-[10px] font-semibold text-neutral-700 text-center leading-[1.1] whitespace-nowrap max-w-[60px] overflow-hidden text-ellipsis" 
+                                        title={activity.name}
+                                        style={{
+                                          display: '-webkit-box',
+                                          WebkitLineClamp: 3,
+                                          WebkitBoxOrient: 'vertical',
+                                          overflow: 'hidden',
+                                          textOverflow: 'ellipsis',
+                                          lineHeight: '1.1',
+                                          maxHeight: '33px'
+                                        }}
+                                      >
+                                        {(() => {
+                                          const text = activity.name;
+                                          const maxLength = 45; // Máximo de caracteres
+                                          
+                                          if (text.length <= maxLength) {
+                                            return text;
+                                          }
+                                          
+                                          // Dividir en palabras y crear líneas inteligentemente
+                                          const words = text.split(' ');
+                                          const lines = [];
+                                          let currentLine = '';
+                                          
+                                          for (const word of words) {
+                                            const testLine = currentLine ? `${currentLine} ${word}` : word;
+                                            
+                                            if (testLine.length <= 15 && lines.length < 2) {
+                                              currentLine = testLine;
+                                            } else {
+                                              if (currentLine) {
+                                                lines.push(currentLine);
+                                                currentLine = word;
+                                              } else {
+                                                lines.push(word);
+                                              }
+                                              
+                                              if (lines.length >= 3) break;
+                                            }
+                                          }
+                                          
+                                          if (currentLine && lines.length < 3) {
+                                            lines.push(currentLine);
+                                          }
+                                          
+                                          // Si hay más contenido, agregar "..." a la última línea
+                                          if (lines.length === 3 && (currentLine !== lines[2] || words.length > lines.join(' ').split(' ').length)) {
+                                            lines[2] = lines[2].length > 12 ? lines[2].substring(0, 12) + '...' : lines[2] + '...';
+                                          }
+                                          
+                                          return lines.join('\n');
+                                        })()}
+                                      </div>
                                     </div>
                                   </div>
-                                  <div className="w-6 h-px bg-neutral-400 my-1"></div>
-                                  <div className="text-[9px] text-neutral-500 font-medium whitespace-nowrap pb-1">
-                                    {formatDateShort(activity.date)}
-                                  </div>
                                 </div>
+                              </div>
+                              
+                              {/* Celda pequeña inferior para la fecha */}
+                              <div className="h-4 bg-neutral-50 flex items-center justify-center border-t border-neutral-300">
+                                <div className="text-[9px] text-neutral-500 font-medium">
+                                  {formatDateShort(activity.date)}
+                                </div>
+                              </div>
                               </div>
                               {isLast && (
                                 <button 
@@ -1182,8 +1296,8 @@ export const GradeBook: React.FC<GradeBookProps> = ({ students, data, taskActivi
           {/* Desktop Final Summary View */}
           <div className="hidden md:block p-4">
             <div className="overflow-hidden rounded-lg border">
-              <div className="overflow-x-auto custom-scrollbar">
-            <Table className="w-full [&_tr]:border-neutral-300 [&_td]:border-neutral-300 [&_th]:border-neutral-300">
+              <div className="overflow-x-auto custom-scrollbar will-change-scroll">
+            <Table className="w-full border-collapse [&_tr]:border-neutral-300 [&_td]:border-neutral-300 [&_th]:border-neutral-300">
                <TableHeader className="bg-neutral-100 sticky top-0 z-10 shadow-sm before:content-[''] before:absolute before:inset-0 before:bg-neutral-100 before:-z-10">
                   <TableRow className="bg-neutral-100">
                     <TableHead className="text-left min-w-[200px] bg-neutral-100">Estudiante</TableHead>
